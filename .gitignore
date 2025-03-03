@@ -52,7 +52,11 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
-
+SAR-SIFT-opencv249/
+PSO-SIFT-matlab-V1.0/
+OS-SIFT-main/
+LGHD-master/
+HOPC-Optical-to-SAR-registration/
 # Translations
 *.mo
 *.pot

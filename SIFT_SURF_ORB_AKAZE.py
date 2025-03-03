@@ -4,7 +4,6 @@ import time
 import os
 import glob
 import re
-import rift2.rift as rift
 
 def get_image_files(folder, extensions=['*.jpg', '*.png', '*.jpeg']):
     """Returns a sorted list of image file paths from the given folder."""
@@ -49,8 +48,7 @@ def create_detector_and_matcher(method):
     elif method.upper() == "AKAZE":
         detector = cv2.AKAZE_create()
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-    elif method.upper() == "RIFT":
-        detector = rift.RIFT()
+
     else:
         raise ValueError(f"Method {method} not recognized.")
     return detector, matcher

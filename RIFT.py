@@ -4,11 +4,11 @@ import time
 import os
 import glob
 import re
-from rift2.FeatureDetection import FeatureDetection
-from rift2.kptsOrientation import kptsOrientation
-from rift2.FeatureDescribe import FeatureDescribe
-from rift2.FSC import FSC
-from rift2.image_fusion import image_fusion
+from RIFT2.FeatureDetection import FeatureDetection
+from RIFT2.kptsOrientation import kptsOrientation
+from RIFT2.FeatureDescribe import FeatureDescribe
+from RIFT2.FSC import FSC
+from RIFT2.image_fusion import image_fusion
 
 def get_image_files(folder, extensions=['*.jpg', '*.png', '*.jpeg']):
     """Returns a sorted list of image file paths from the given folder."""

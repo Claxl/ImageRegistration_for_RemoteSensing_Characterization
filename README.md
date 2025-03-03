@@ -21,7 +21,8 @@ The extracted metrics are
 - Median execution time
 - Mean execution time
 
-### Credits
+## Credits
+### Methods
 - Li, Jiayuan, et al. "RIFT2: Speeding-up RIFT with a new rotation-invariance technique."
 - Yu, G.; Zhao, S. A New Feature Descriptor for Multimodal Image Registration Using Phase Congruency. Sensors 2020, 20, 5105. https://doi.org/10.3390/s20185105
 - Hao Li, Xinyue Gao, Xing Li, and Bin Wu "A modified HOPC algorithm for SAR image registration", Proc. SPIE 12129, International Conference on Environmental Remote Sensing and Big Data (ERSBD 2021), 121290B (9 December 2021); https://doi.org/10.1117/12.2625569

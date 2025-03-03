@@ -2,7 +2,17 @@
 In this repository are present all the opencv method for Feature detection and description.
 Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC** are implemented in python.
 
-## METRICS
+## Current state
+-  SIFT : Implemented
+-  SURF : Implemented
+-  ORB : Implemented
+-  AKAZE : Implemented
+-  RIFT : Implemented
+-  HOPC : Need Bug Fix
+-  OS-SIFT : To port in Python
+-  SAR-SIFT : To port in Python
+-  LGHD : To port in Python
+## Metrics
 The extracted metrics are
 - Number of Match (**NM**)
 - Number of correct match (**NCM**)

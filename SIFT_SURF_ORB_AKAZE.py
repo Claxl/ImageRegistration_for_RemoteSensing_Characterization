@@ -160,6 +160,7 @@ def main():
         parser.add_argument("--output_folder", type=str, help="Path to the output folder.")
         parser.add_argument("--ratio_thresh", type=float, default=0.7, help="Lowe's ratio test threshold.")
         parser.add_argument("--debug", action="store_true", help="Show debug information.")
+        parser.add_argument("--save", action="store_true", help="Save the results to a file.")
         return parser.parse_args()
 
     args = parse_arguments()
@@ -253,7 +254,8 @@ def main():
                 total_NM += NM
                 total_NCM += NCM
                 registration_times.append(reg_time)
-                save_results(sar_img_path, opt_img_path, registered_img, matches_img, method)
+                if args.save:
+                    save_results(sar_img_path, opt_img_path, registered_img, matches_img, method)
             except Exception as e:
                 print(f"  Error processing pair for key {key}: {e}")
         

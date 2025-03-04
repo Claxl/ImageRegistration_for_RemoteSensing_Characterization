@@ -199,6 +199,9 @@ def main():
         parser = argparse.ArgumentParser(description="Process SAR and Optical image pairs.")
         parser.add_argument("--sar_folder", type=str, required=True, help="Path to the folder containing SAR images.")
         parser.add_argument("--opt_folder", type=str, required=True, help="Path to the folder containing Optical images.")
+        parser.add_argument("--debug", action="store_true", help="Show debug information.")
+        parser.add_argument("--save", action="store_true", help="Save the results to a file.")
+
         return parser.parse_args()
 
     args = parse_arguments()
@@ -246,7 +249,8 @@ def main():
                 total_NM += NM
                 total_NCM += NCM
                 registration_times.append(reg_time)
-                save_results(sar_img_path, opt_img_path, registered_img, matches_img)
+                if args.save:
+                    save_results(sar_img_path, opt_img_path, registered_img, matches_img)
             except Exception as e:
                 print(f"  Error processing pair for key {key}: {e}")
         

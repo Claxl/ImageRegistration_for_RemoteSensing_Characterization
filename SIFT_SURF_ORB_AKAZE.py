@@ -241,6 +241,7 @@ def main():
         total_NCM = 0
         registration_times = []
         
+
         for key in common_keys:
             sar_img_path = sar_dict[key]
             opt_img_path = opt_dict[key]
@@ -266,9 +267,12 @@ def main():
         # Write results to file
         results_path = os.path.join(output_dir, f"{method}_output.txt")
         with open(results_path, "w", encoding="utf-8") as f:
+            f.write(f"Results for {method}\n")
+            f.write(f"Found {len(common_keys)} common keys\n")
             f.write(f"Global results : Total NM: {total_NM}, Total NCM: {total_NCM}, Overall ratio: {overall_ratio:.2f}\n")
             if registration_times:
                 f.write(f"Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec\n")
+            print(f"Results written to {results_path}")
             f.close()
 
 if __name__ == "__main__":

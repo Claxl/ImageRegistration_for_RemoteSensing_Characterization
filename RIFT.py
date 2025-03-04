@@ -185,8 +185,8 @@ def process_image_pair(sar_img_path, opt_img_path):
                           error_t=3.0)
 
     registered_img, mosaic_img = image_fusion(sar_img, opt_img, H)
-    cv2.imshow("mosaic", mosaic_img)
-    cv2.waitKey(0)
+   # cv2.imshow("mosaic", mosaic_img)
+   # cv2.waitKey(0)
     NM = matchedPoints2_unique.shape[0]
     NCM = c2.shape[0]
     ratio = NM/ NCM if NCM != 0 else 0

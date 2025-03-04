@@ -176,7 +176,7 @@ def main():
         print("No matching image pairs (by number) found.")
         return
 
-    methods = [ "SIFT", "SURF", "ORB", "AKAZE"]
+    methods = args.methods.split(",") if args.methods else ["SIFT", "SURF", "ORB", "AKAZE"]
     for method in methods:
         print(f"\n==== Processing using {method} ====")
         try:

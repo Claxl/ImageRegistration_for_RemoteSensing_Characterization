@@ -11,6 +11,7 @@ from RIFT2.FSC import FSC
 from RIFT2.image_fusion import image_fusion
 import argparse
 
+
 def get_image_files(folder, extensions=['*.jpg', '*.png', '*.jpeg']):
     """Returns a sorted list of image file paths from the given folder."""
     files = []
@@ -20,14 +21,25 @@ def get_image_files(folder, extensions=['*.jpg', '*.png', '*.jpeg']):
 
 def extract_number(filename):
     """
-    Extracts the first group of digits from the filename.
-    Returns the number as a string, or None if no digits are found.
+    Extracts the identifier part from filenames like 'ROIs1970_fall_s1_8_p99.png'.
+    This extracts '8_p99' which can be used to match files across directories.
     """
+    # For filenames like 'ROIs1970_fall_s1_8_p99.png'
+    match = re.search(r'_(\d+_p\d+)', filename)
+    if match:
+        return match.group(1)
+    
+    # Fallback to extracting just the number before '_p'
+    match = re.search(r'_(\d+)_p', filename)
+    if match:
+        return match.group(1)
+    
+    # Final fallback to any number
     match = re.search(r'\d+', filename)
     if match:
         return match.group()
+    
     return None
-
 
 def save_results(sar_path, opt_path, registered_img, matches_img):
     """

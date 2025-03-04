@@ -4,6 +4,7 @@ import time
 import os
 import glob
 import re
+import argparse
 
 def get_image_files(folder, extensions=['*.jpg', '*.png', '*.jpeg']):
     """Returns a sorted list of image file paths from the given folder."""
@@ -48,7 +49,6 @@ def create_detector_and_matcher(method):
     elif method.upper() == "AKAZE":
         detector = cv2.AKAZE_create()
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-
     else:
         raise ValueError(f"Method {method} not recognized.")
     return detector, matcher
@@ -73,7 +73,7 @@ def save_results(sar_path, opt_path, registered_img, matches_img, method):
     if matches_img is not None:
         cv2.imwrite(matches_filename, matches_img)
 
-def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thresh=0.7, method = "SIFT"):
+def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thresh=0.7):
     """
     Processes a pair of images:
       - Reads the images (in grayscale)
@@ -96,8 +96,6 @@ def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thre
     opt_img = cv2.imread(opt_img_path, cv2.IMREAD_GRAYSCALE)
     if sar_img is None or opt_img is None:
         raise IOError(f"Error loading images: {sar_img_path} or {opt_img_path}")
-    if method.upper() == "RIFT":
-        return
     # Extract keypoints and descriptors
     kp_sar, desc_sar = detector.detectAndCompute(sar_img, None)
     kp_opt, desc_opt = detector.detectAndCompute(opt_img, None)
@@ -142,10 +140,16 @@ def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thre
     return NM, NCM, ratio, reg_time, registered_img, matches_img
 
 def main():
-    # Ask for input folders for SAR and Optical images
-    sar_folder = "DATASET/MRSIDatasets/1optical-optical/1"
-    opt_folder = "DATASET/MRSIDatasets/1optical-optical/2"
-    
+    def parse_arguments():
+        parser = argparse.ArgumentParser(description="Process SAR and Optical image pairs.")
+        parser.add_argument("--sar_folder", type=str, required=True, help="Path to the folder containing SAR images.")
+        parser.add_argument("--opt_folder", type=str, required=True, help="Path to the folder containing Optical images.")
+        return parser.parse_args()
+
+    args = parse_arguments()
+    sar_folder = args.sar_folder
+    opt_folder = args.opt_folder
+
     sar_files = get_image_files(sar_folder)
     opt_files = get_image_files(opt_folder)
     
@@ -172,15 +176,11 @@ def main():
         print("No matching image pairs (by number) found.")
         return
 
-    methods = [ "RIFT"]
+    methods = [ "SIFT", "SURF", "ORB", "AKAZE"]
     for method in methods:
         print(f"\n==== Processing using {method} ====")
         try:
-            if method.upper() == "RIFT":
-                detector = create_detector_and_matcher(method)
-                matcher = None
-            else:
-                detector, matcher = create_detector_and_matcher(method)
+            detector, matcher = create_detector_and_matcher(method)
         except Exception as e:
             print(f"Skipping method {method} due to error: {e}")
             continue
@@ -195,7 +195,7 @@ def main():
             print(f"Processing pair: SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
             try:
                 NM, NCM, ratio, reg_time, registered_img, matches_img = process_image_pair(
-                    sar_img_path, opt_img_path, detector, matcher, method)
+                    sar_img_path, opt_img_path, detector, matcher)
                 print(f"  NM: {NM}, NCM: {NCM}, Ratio: {ratio:.2f}, Time: {reg_time:.3f} sec")
                 total_NM += NM
                 total_NCM += NCM
@@ -211,6 +211,10 @@ def main():
             median_time = np.median(registration_times)
             print(f"Registration times for {method} - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec")
         print("\n")
+        with open("output/"+method+"_output.txt", "w", encoding="utf-8") as f:
+            f.write(f"Global results : Total NM: {total_NM}, Total NCM: {total_NCM}, Overall ratio: {overall_ratio:.2f}\n")
+            f.write(f"Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec\n")
+            f.close()
 
 if __name__ == "__main__":
     main()

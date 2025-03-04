@@ -77,6 +77,6 @@ def image_fusion(image_1: np.ndarray,
 
     # For demonstration, just show or return fusion_image
     # Also does mosaic_map for an alternate board pattern.
-
+    _,_,mosaic_image = mosaic_map(out1, out2, 64)
     # Return the fused result
-    return fusion_image
+    return fusion_image, mosaic_image

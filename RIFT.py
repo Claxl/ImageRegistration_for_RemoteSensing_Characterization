@@ -60,6 +60,7 @@ def save_results(sar_path, opt_path, registered_img, matches_img):
         cv2.imwrite(reg_filename, registered_img)
     if matches_img is not None:
         cv2.imwrite(matches_filename, matches_img)
+
 def make_match_image(im1, im2, pts1, pts2, color=(0, 255, 255), radius=5, thickness=2):
     """
     Creates and returns a single image visualizing matches between two images.
@@ -108,12 +109,13 @@ def make_match_image(im1, im2, pts1, pts2, color=(0, 255, 255), radius=5, thickn
         cv2.line(match_vis, (int(x1), int(y1)), (int(x2_shifted), int(y2)), color, thickness)
 
     return match_vis
+
 def process_image_pair(sar_img_path, opt_img_path):
     """
     Processes a pair of images:
       - Reads the images (in grayscale)
       - Extracts keypoints and descriptors using the provided detector
-      - Matches descriptors using the provided matcher with k=2 and applies Lowe’s ratio test
+      - Matches descriptors using the provided matcher with k=2 and applies Lowe's ratio test
       - Computes the homography using RANSAC (if there are enough matches)
       - Draws the inlier matches and registers the SAR image using the homography.
     Returns:
@@ -161,7 +163,7 @@ def process_image_pair(sar_img_path, opt_img_path):
 
 
     # 5) Match the descriptors
-    #   Suppose they’re arrays shape (N1, D) and (N2, D).
+    #   Suppose they're arrays shape (N1, D) and (N2, D).
     bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
     matches = bf.knnMatch(des1.astype(np.float32),
                           des2.astype(np.float32),
@@ -208,18 +210,24 @@ def process_image_pair(sar_img_path, opt_img_path):
 
 def main():
     def parse_arguments():
-        parser = argparse.ArgumentParser(description="Process SAR and Optical image pairs.")
+        parser = argparse.ArgumentParser(description="Process SAR and Optical image pairs using RIFT2.")
         parser.add_argument("--sar_folder", type=str, required=True, help="Path to the folder containing SAR images.")
         parser.add_argument("--opt_folder", type=str, required=True, help="Path to the folder containing Optical images.")
         parser.add_argument("--debug", action="store_true", help="Show debug information.")
         parser.add_argument("--save", action="store_true", help="Save the results to a file.")
+        parser.add_argument("--output_folder", type=str, default="output", help="Path to the output folder.")
 
         return parser.parse_args()
 
     args = parse_arguments()
     sar_folder = args.sar_folder
     opt_folder = args.opt_folder
-
+    debug = args.debug
+    
+    # Create output directory if it doesn't exist
+    output_dir = args.output_folder
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     
     sar_files = get_image_files(sar_folder)
     opt_files = get_image_files(opt_folder)
@@ -228,55 +236,102 @@ def main():
         print("No images found in one of the folders.")
         return
     
+    # Print debug info about the files found
+    if debug:
+        print(f"Found {len(sar_files)} SAR images and {len(opt_files)} optical images")
+        print("\nSAR files:")
+        for f in sar_files:
+            print(f"  {os.path.basename(f)}")
+        print("\nOptical files:")
+        for f in opt_files:
+            print(f"  {os.path.basename(f)}")
+    
     # Build dictionaries mapping the extracted number from filename to file path
     sar_dict = {}
     for f in sar_files:
-        key = extract_number(os.path.basename(f))
+        basename = os.path.basename(f)
+        key = extract_number(basename)
         if key is not None:
             sar_dict[key] = f
+            if debug:
+                print(f"SAR: {basename} -> key: {key}")
 
     opt_dict = {}
     for f in opt_files:
-        key = extract_number(os.path.basename(f))
+        basename = os.path.basename(f)
+        key = extract_number(basename)
         if key is not None:
             opt_dict[key] = f
+            if debug:
+                print(f"OPT: {basename} -> key: {key}")
 
     # Find common keys (images with the same number)
-    common_keys = sorted(set(sar_dict.keys()).intersection(set(opt_dict.keys())), key=lambda x: int(x))
+    common_keys = sorted(set(sar_dict.keys()).intersection(set(opt_dict.keys())), 
+                         key=lambda x: int(x) if x.isdigit() else x)
+    
+    if debug:
+        print(f"\nFound {len(common_keys)} common keys: {common_keys}")
+        print("\nMatching pairs:")
+        for key in common_keys:
+            sar_img_path = sar_dict[key]
+            opt_img_path = opt_dict[key]
+            print(f"  SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
+    
     if not common_keys:
         print("No matching image pairs (by number) found.")
         return
+
+    print(f"\n==== Processing using RIFT2 ====")
+    
     total_NM = 0
     total_NCM = 0
     registration_times = []
-        
+    rmse_values = []
+    
     for key in common_keys:
-            sar_img_path = sar_dict[key]
-            opt_img_path = opt_dict[key]
-            print(f"Processing pair: SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
-            try:
-                NM, NCM, ratio, reg_time, registered_img, matches_img, rmse = process_image_pair(
-                    sar_img_path, opt_img_path)
-                print(f"  NM: {NM}, NCM: {NCM}, Ratio: {ratio:.2f}, Time: {reg_time:.3f} sec, RMSE: {rmse:.3f}")
-                total_NM += NM
-                total_NCM += NCM
-                registration_times.append(reg_time)
-                if args.save:
-                    save_results(sar_img_path, opt_img_path, registered_img, matches_img)
-            except Exception as e:
-                print(f"  Error processing pair for key {key}: {e}")
+        sar_img_path = sar_dict[key]
+        opt_img_path = opt_dict[key]
+        print(f"Processing pair: SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
+        try:
+            NM, NCM, ratio, reg_time, registered_img, matches_img, rmse = process_image_pair(
+                sar_img_path, opt_img_path)
+            print(f"  NM: {NM}, NCM: {NCM}, Ratio: {ratio:.2f}, Time: {reg_time:.3f} sec, RMSE: {rmse:.3f}")
+            total_NM += NM
+            total_NCM += NCM
+            registration_times.append(reg_time)
+            rmse_values.append(rmse)
+            
+            # Save results by default or if explicitly requested
+            if args.save or output_dir != "output":
+                save_results(sar_img_path, opt_img_path, registered_img, matches_img)
+        except Exception as e:
+            print(f"  Error processing pair for key {key}: {e}")
+            import traceback
+            traceback.print_exc()
         
+    # Calculate overall statistics
     overall_ratio = total_NM / total_NCM if total_NCM != 0 else 0
-    print(f"Global results : Total NM: {total_NM}, Total NCM: {total_NCM}, Overall ratio: {overall_ratio:.2f}")
+    print(f"\nGlobal results for RIFT2:")
+    print(f"  Total NM: {total_NM}, Total NCM: {total_NCM}, Overall ratio: {overall_ratio:.2f}")
+    
     if registration_times:
         average_time = np.mean(registration_times)
         median_time = np.median(registration_times)
-        print(f"Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec")
-    print("\n")
-    with open("output/RIFT_output.txt", "w", encoding="utf-8") as f:
+        print(f"  Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec")
+    
+    if rmse_values:
+        average_rmse = np.mean(rmse_values)
+        median_rmse = np.median(rmse_values)
+        print(f"  RMSE - Average: {average_rmse:.3f}, Median: {median_rmse:.3f}")
+    
+    # Write results to file
+    results_path = os.path.join(output_dir, "RIFT2_output.txt")
+    with open(results_path, "w", encoding="utf-8") as f:
         f.write(f"Global results : Total NM: {total_NM}, Total NCM: {total_NCM}, Overall ratio: {overall_ratio:.2f}\n")
-        f.write(f"Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec\n")
-        f.close()
+        if registration_times:
+            f.write(f"Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec\n")
+        if rmse_values:
+            f.write(f"RMSE - Average: {average_rmse:.3f}, Median: {median_rmse:.3f}\n")
 
 if __name__ == "__main__":
     main()

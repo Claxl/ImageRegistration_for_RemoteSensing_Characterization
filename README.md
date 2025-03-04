@@ -8,10 +8,12 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  ORB : Implemented
 -  AKAZE : Implemented
 -  RIFT : Implemented
--  HOPC : Need Bug Fix
--  OS-SIFT : To port in Python
+-  HOPC : More analysis needed
 -  SAR-SIFT : To port in Python
 -  LGHD : To port in Python
+-  POS-GIFT : To port in Python
+-  CoFSM : To port in Python
+
 ## Metrics
 The extracted metrics are
 - Number of Match (**NM**)

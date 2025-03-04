@@ -144,6 +144,7 @@ def main():
         parser = argparse.ArgumentParser(description="Process SAR and Optical image pairs.")
         parser.add_argument("--sar_folder", type=str, required=True, help="Path to the folder containing SAR images.")
         parser.add_argument("--opt_folder", type=str, required=True, help="Path to the folder containing Optical images.")
+        parser.add_argument("--methods", type=str, help="Comma-separated list of methods to use (SIFT, SURF, ORB, AKAZE).")
         return parser.parse_args()
 
     args = parse_arguments()

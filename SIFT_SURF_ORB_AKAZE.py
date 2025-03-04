@@ -145,11 +145,18 @@ def main():
         parser.add_argument("--sar_folder", type=str, required=True, help="Path to the folder containing SAR images.")
         parser.add_argument("--opt_folder", type=str, required=True, help="Path to the folder containing Optical images.")
         parser.add_argument("--methods", type=str, help="Comma-separated list of methods to use (SIFT, SURF, ORB, AKAZE).")
+        parser.add_argument("--output_folder", type=str, help="Path to the output folder.")
+        parser.add_argument("--ratio_thresh", type=float, default=0.7, help="Lowe's ratio test threshold.")
+        parser.add_argument("--debug", action="store_true", help="Show debug information.")
         return parser.parse_args()
 
     args = parse_arguments()
     sar_folder = args.sar_folder
     opt_folder = args.opt_folder
+    debug = args.debug
+    if debug:
+        image_files = get_image_files(sar_folder) + get_image_files(opt_folder)
+        print("Found image files:", image_files)
 
     sar_files = get_image_files(sar_folder)
     opt_files = get_image_files(opt_folder)

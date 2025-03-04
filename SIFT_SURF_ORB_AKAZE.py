@@ -15,12 +15,24 @@ def get_image_files(folder, extensions=['*.jpg', '*.png', '*.jpeg']):
 
 def extract_number(filename):
     """
-    Extracts the first group of digits from the filename.
-    Returns the number as a string, or None if no digits are found.
+    Extracts the identifier part from filenames like 'ROIs1970_fall_s1_8_p99.png'.
+    This extracts '8_p99' which can be used to match files across directories.
     """
+    # For filenames like 'ROIs1970_fall_s1_8_p99.png'
+    match = re.search(r'_(\d+_p\d+)', filename)
+    if match:
+        return match.group(1)
+    
+    # Fallback to extracting just the number before '_p'
+    match = re.search(r'_(\d+)_p', filename)
+    if match:
+        return match.group(1)
+    
+    # Final fallback to any number
     match = re.search(r'\d+', filename)
     if match:
         return match.group()
+    
     return None
 
 def create_detector_and_matcher(method):
@@ -78,7 +90,7 @@ def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thre
     Processes a pair of images:
       - Reads the images (in grayscale)
       - Extracts keypoints and descriptors using the provided detector
-      - Matches descriptors using the provided matcher with k=2 and applies Lowe’s ratio test
+      - Matches descriptors using the provided matcher with k=2 and applies Lowe's ratio test
       - Computes the homography using RANSAC (if there are enough matches)
       - Draws the inlier matches and registers the SAR image using the homography.
     Returns:
@@ -154,6 +166,12 @@ def main():
     sar_folder = args.sar_folder
     opt_folder = args.opt_folder
     debug = args.debug
+    
+    # Create output directory if it doesn't exist
+    output_dir = args.output_folder if args.output_folder else "output"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
     if debug:
         image_files = get_image_files(sar_folder) + get_image_files(opt_folder)
         print("Found image files:", image_files)
@@ -165,21 +183,47 @@ def main():
         print("No images found in one of the folders.")
         return
     
+    # Print debug info about the files found
+    if debug:
+        print(f"Found {len(sar_files)} SAR images and {len(opt_files)} optical images")
+        print("\nSAR files:")
+        for f in sar_files:
+            print(f"  {os.path.basename(f)}")
+        print("\nOptical files:")
+        for f in opt_files:
+            print(f"  {os.path.basename(f)}")
+    
     # Build dictionaries mapping the extracted number from filename to file path
     sar_dict = {}
     for f in sar_files:
-        key = extract_number(os.path.basename(f))
+        basename = os.path.basename(f)
+        key = extract_number(basename)
         if key is not None:
             sar_dict[key] = f
+            if debug:
+                print(f"SAR: {basename} -> key: {key}")
 
     opt_dict = {}
     for f in opt_files:
-        key = extract_number(os.path.basename(f))
+        basename = os.path.basename(f)
+        key = extract_number(basename)
         if key is not None:
             opt_dict[key] = f
+            if debug:
+                print(f"OPT: {basename} -> key: {key}")
 
     # Find common keys (images with the same number)
-    common_keys = sorted(set(sar_dict.keys()).intersection(set(opt_dict.keys())), key=lambda x: int(x))
+    common_keys = sorted(set(sar_dict.keys()).intersection(set(opt_dict.keys())), 
+                         key=lambda x: int(x) if x.isdigit() else x)
+    
+    if debug:
+        print(f"\nFound {len(common_keys)} common keys: {common_keys}")
+        print("\nMatching pairs:")
+        for key in common_keys:
+            sar_img_path = sar_dict[key]
+            opt_img_path = opt_dict[key]
+            print(f"  SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
+    
     if not common_keys:
         print("No matching image pairs (by number) found.")
         return
@@ -203,7 +247,7 @@ def main():
             print(f"Processing pair: SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
             try:
                 NM, NCM, ratio, reg_time, registered_img, matches_img = process_image_pair(
-                    sar_img_path, opt_img_path, detector, matcher)
+                    sar_img_path, opt_img_path, detector, matcher, args.ratio_thresh)
                 print(f"  NM: {NM}, NCM: {NCM}, Ratio: {ratio:.2f}, Time: {reg_time:.3f} sec")
                 total_NM += NM
                 total_NCM += NCM
@@ -218,10 +262,13 @@ def main():
             average_time = np.mean(registration_times)
             median_time = np.median(registration_times)
             print(f"Registration times for {method} - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec")
-        print("\n")
-        with open("output/"+method+"_output.txt", "w", encoding="utf-8") as f:
+        
+        # Write results to file
+        results_path = os.path.join(output_dir, f"{method}_output.txt")
+        with open(results_path, "w", encoding="utf-8") as f:
             f.write(f"Global results : Total NM: {total_NM}, Total NCM: {total_NCM}, Overall ratio: {overall_ratio:.2f}\n")
-            f.write(f"Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec\n")
+            if registration_times:
+                f.write(f"Registration times - Average: {average_time:.3f} sec, Median: {median_time:.3f} sec\n")
             f.close()
 
 if __name__ == "__main__":

@@ -149,7 +149,6 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 if method.upper() == "LGHD" and not LGHD_AVAILABLE:
                     print(f"Skipping LGHD method as it's not available")
                     continue
-                print(f"Creating {method}")
                 detector, matcher = create_detector_and_matcher(method)
                 results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
                                                   landmarks_mov, landmarks_fix, transform_gt, 

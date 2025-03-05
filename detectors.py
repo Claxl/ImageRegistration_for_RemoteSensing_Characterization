@@ -59,7 +59,9 @@ def create_detector_and_matcher(method):
         matcher = cv2.FlannBasedMatcher(index_params, search_params)
     elif method.upper() == "ORB":
         try:
+            print(f"Creating {method}")
             detector = cv2.ORB_create()
+            print(f"Created {method}")
         except AttributeError:
             raise AttributeError("ORB is not available. Please install opencv-contrib")
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)

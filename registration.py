@@ -211,9 +211,11 @@ def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thre
     
     # Standard OpenCV-based processing
     # Extract keypoints and descriptors
-    kp_sar, desc_sar = detector.detectAndCompute(sar_img, None)
-    kp_opt, desc_opt = detector.detectAndCompute(opt_img, None)
-    
+    try:
+        kp_sar, desc_sar = detector.detectAndCompute(sar_img, None)
+        kp_opt, desc_opt = detector.detectAndCompute(opt_img, None)
+    except cv2.error as e:
+        raise cv2.error(f"Error in feature extraction: {e}")
     num_keypoints_sar = len(kp_sar)
     num_keypoints_opt = len(kp_opt)
     

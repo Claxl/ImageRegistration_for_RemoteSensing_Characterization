@@ -58,7 +58,10 @@ def create_detector_and_matcher(method):
         search_params = dict(checks=50)
         matcher = cv2.FlannBasedMatcher(index_params, search_params)
     elif method.upper() == "ORB":
-        detector = cv2.ORB_create()
+        try:
+            detector = cv2.ORB_create()
+        except AttributeError:
+            raise AttributeError("ORB is not available. Please install opencv-contrib")
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
     elif method.upper() == "AKAZE":
         detector = cv2.AKAZE_create()

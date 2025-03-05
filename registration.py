@@ -211,6 +211,7 @@ def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thre
     
     # Standard OpenCV-based processing
     # Extract keypoints and descriptors
+    print("Using OpenCV-based algorithm for processing...")
     try:
         kp_sar, desc_sar = detector.detectAndCompute(sar_img, None)
         kp_opt, desc_opt = detector.detectAndCompute(opt_img, None)

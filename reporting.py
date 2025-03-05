@@ -24,45 +24,19 @@ def save_metrics(results, method, output_dir):
         f.write(f"Metrics for {method}\n")
         f.write("=" * (len(f"Metrics for {method}")) + "\n\n")
         
-        f.write(f"Number of detected points: {results['total_points']}\n")
-        f.write(f"Number of repeatable points: {results['repeatable_points']}\n")
-        f.write(f"Number of ground truth matches: {results['gt_matches']}\n")
-        f.write(f"Number of matches (NM): {results['NM']}\n")
-        f.write(f"Number of correct matches (NCM): {results['NCM']}\n")
-        f.write(f"Ratio NM/NCM: {results['ratio']:.4f}\n")
-        f.write(f"Registration time: {results['reg_time']:.4f} sec\n\n")
+        # Basic metrics - the ones you specifically wanted
+        f.write(f"Number of keypoints detected in SAR image: {results['num_keypoints_sar']}\n")
+        f.write(f"Number of keypoints detected in optical image: {results['num_keypoints_opt']}\n")
+        f.write(f"Number of matches between images: {results['num_matches']}\n")
+        f.write(f"Number of inlier matches after RANSAC: {results['num_inliers']}\n")
         
-        # Handle RMSE from different sources
-        if 'rmse' in results and results['rmse'] is not None:
-            f.write(f"RMSE between landmarks: {results['rmse']:.4f}\n")
-        elif 'rmse_landmarks' in results and results['rmse_landmarks'] is not None:
-            f.write(f"RMSE between landmarks: {results['rmse_landmarks']:.4f}\n")
+        if 'matrix_rmse' in results and results['matrix_rmse'] is not None:
+            f.write(f"RMSE between calculated and ground truth matrices: {results['matrix_rmse']:.6f}\n")
         else:
-            f.write("RMSE between landmarks: N/A\n")
+            f.write("RMSE between calculated and ground truth matrices: N/A\n")
         
-        if 'entropy_opt' in results and results['entropy_opt'] is not None:
-            f.write(f"Entropy of optical image: {results['entropy_opt']:.4f}\n")
-        else:
-            f.write("Entropy of optical image: N/A\n")
+        f.write(f"Total execution time: {results['execution_time']:.4f} sec\n\n")
         
-        if 'entropy_reg' in results and results['entropy_reg'] is not None:
-            f.write(f"Entropy of registered image: {results['entropy_reg']:.4f}\n")
-        else:
-            f.write("Entropy of registered image: N/A\n")
-        
-        if 'mutual_information' in results and results['mutual_information'] is not None:
-            f.write(f"Mutual Information: {results['mutual_information']:.4f}\n")
-        else:
-            f.write("Mutual Information: N/A\n")
-        
-        # Add transformation error metrics if available
-        if 'transform_error' in results and results['transform_error'] is not None:
-            f.write(f"\nTransform error on sample points: {results['transform_error']:.4f}\n")
-            f.write(f"Transformation matrix RMSE: {results['rmse']:.4f}\n")
-            f.write(f"Transformation matrix Frobenius norm: {results['frobenius']:.4f}\n")
-        else:
-            f.write("\nTransformation matrix comparison: N/A\n")
-            
         # Save the transformation matrix if available
         if 'transformation_matrix' in results and results['transformation_matrix'] is not None:
             f.write("\nTransformation Matrix:\n")
@@ -84,110 +58,47 @@ def compare_methods(results_by_method, output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # Check if we have transformation error metrics
-    has_transform_error = any('transform_error' in results and results['transform_error'] is not None 
-                            for results in results_by_method.values())
-    
-    # Create comparison table
+    # Create comparison table focusing on the metrics you specifically asked for
     with open(os.path.join(output_dir, "method_comparison.txt"), 'w') as f:
         f.write("METHOD COMPARISON\n")
         f.write("===============\n\n")
         
-        if has_transform_error:
-            f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15}\n".format(
-                "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI", "Transform Error"))
-            f.write("-" * 105 + "\n")
-        else:
-            f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}\n".format(
-                "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI"))
-            f.write("-" * 90 + "\n")
+        f.write("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15}\n".format(
+            "Method", "SAR Keypoints", "OPT Keypoints", "Matches", "Inliers", "Matrix RMSE", "Time (sec)"))
+        f.write("-" * 105 + "\n")
         
         for method, results in results_by_method.items():
-            # Handle RMSE from different sources
-            if 'rmse' in results and results['rmse'] is not None:
-                rmse_value = results['rmse']
-            elif 'rmse_landmarks' in results and results['rmse_landmarks'] is not None:
-                rmse_value = results['rmse_landmarks']
-            else:
-                rmse_value = None
-                
-            rmse_str = f"{rmse_value:.4f}" if rmse_value is not None else "N/A"
-            mi_str = f"{results['mutual_information']:.4f}" if 'mutual_information' in results and results['mutual_information'] is not None else "N/A"
-            transform_error_str = f"{results['transform_error']:.4f}" if 'transform_error' in results and results['transform_error'] is not None else "N/A"
+            matrix_rmse_str = f"{results['matrix_rmse']:.6f}" if 'matrix_rmse' in results and results['matrix_rmse'] is not None else "N/A"
             
-            if has_transform_error:
-                f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15}\n".format(
-                    method, 
-                    results['total_points'],
-                    results['repeatable_points'],
-                    results['gt_matches'],
-                    results['NM'],
-                    results['NCM'],
-                    rmse_str,
-                    mi_str,
-                    transform_error_str
-                ))
-            else:
-                f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10}\n".format(
-                    method, 
-                    results['total_points'],
-                    results['repeatable_points'],
-                    results['gt_matches'],
-                    results['NM'],
-                    results['NCM'],
-                    rmse_str,
-                    mi_str
-                ))
+            f.write("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15.4f}\n".format(
+                method, 
+                results['num_keypoints_sar'],
+                results['num_keypoints_opt'],
+                results['num_matches'],
+                results['num_inliers'],
+                matrix_rmse_str,
+                results['execution_time']
+            ))
     
     # Print comparison table
     print("\n==== Comparison of Methods ====")
-    if has_transform_error:
-        header = "{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<14} {:<10} {:<15}".format(
-            "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI", "Transform Error")
-        print(header)
-        print("-" * len(header))
-    else:
-        header = "{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<14} {:<10}".format(
-            "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI")
-        print(header)
-        print("-" * len(header))
+    header = "{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15}".format(
+        "Method", "SAR Keypoints", "OPT Keypoints", "Matches", "Inliers", "Matrix RMSE", "Time (sec)")
+    print(header)
+    print("-" * len(header))
     
     for method, results in results_by_method.items():
-        # Handle RMSE from different sources
-        if 'rmse' in results and results['rmse'] is not None:
-            rmse_value = results['rmse']
-        elif 'rmse_landmarks' in results and results['rmse_landmarks'] is not None:
-            rmse_value = results['rmse_landmarks']
-        else:
-            rmse_value = None
-            
-        rmse_str = f"{rmse_value:.4f}" if rmse_value is not None else "N/A"
-        mi_str = f"{results['mutual_information']:.4f}" if 'mutual_information' in results and results['mutual_information'] is not None else "N/A"
-        transform_error_str = f"{results['transform_error']:.4f}" if 'transform_error' in results and results['transform_error'] is not None else "N/A"
+        matrix_rmse_str = f"{results['matrix_rmse']:.6f}" if 'matrix_rmse' in results and results['matrix_rmse'] is not None else "N/A"
         
-        if has_transform_error:
-            print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<14} {:<10} {:<15}".format(
-                method, 
-                results['total_points'],
-                results['repeatable_points'],
-                results['gt_matches'],
-                results['NM'],
-                results['NCM'],
-                rmse_str,
-                mi_str,
-                transform_error_str
-            ))
-        else:
-            print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<14} {:<10}".format(
-                method, 
-                results['total_points'],
-                results['repeatable_points'],
-                results['gt_matches'],
-                results['NM'],
-                results['NCM'],
-                rmse_str,
-                mi_str
-            ))
+        print("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15.4f}".format(
+            method, 
+            results['num_keypoints_sar'],
+            results['num_keypoints_opt'],
+            results['num_matches'],
+            results['num_inliers'],
+            matrix_rmse_str,
+            results['execution_time']
+        ))
     
     # Create a visual comparison of methods
     create_method_comparison_chart(results_by_method, output_dir)
@@ -204,16 +115,6 @@ def create_summary_report(results_by_set, methods, output_dir):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # Check if we have transformation error metrics
-    has_transform_error = False
-    for set_results in results_by_set.values():
-        for method_results in set_results.values():
-            if 'transform_error' in method_results and method_results['transform_error'] is not None:
-                has_transform_error = True
-                break
-        if has_transform_error:
-            break
-    
     # Create the report
     report_path = os.path.join(output_dir, "summary_report.txt")
     with open(report_path, 'w') as f:
@@ -225,55 +126,26 @@ def create_summary_report(results_by_set, methods, output_dir):
             f.write("-" * 80 + "\n")
             
             # Metrics table
-            if has_transform_error:
-                f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}\n".format(
-                    "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI", "Transform Err"))
-                f.write("-" * 105 + "\n")
-            else:
-                f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10}\n".format(
-                    "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI"))
-                f.write("-" * 90 + "\n")
+            f.write("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15}\n".format(
+                "Method", "SAR Keypoints", "OPT Keypoints", "Matches", "Inliers", "Matrix RMSE", "Time (sec)"))
+            f.write("-" * 105 + "\n")
             
             for method, results in set_results.items():
-                # Handle RMSE from different sources (RIFT vs others)
-                if 'rmse' in results and results['rmse'] is not None:
-                    rmse_value = results['rmse']
-                elif 'rmse_landmarks' in results and results['rmse_landmarks'] is not None:
-                    rmse_value = results['rmse_landmarks']
-                else:
-                    rmse_value = None
-                    
-                rmse_str = f"{rmse_value:.4f}" if rmse_value is not None else "N/A"
-                mi_str = f"{results['mutual_information']:.4f}" if 'mutual_information' in results and results['mutual_information'] is not None else "N/A"
-                transform_error_str = f"{results['transform_error']:.4f}" if 'transform_error' in results and results['transform_error'] is not None else "N/A"
+                matrix_rmse_str = f"{results['matrix_rmse']:.6f}" if 'matrix_rmse' in results and results['matrix_rmse'] is not None else "N/A"
                 
-                if has_transform_error:
-                    f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}\n".format(
-                        method,
-                        results['total_points'],
-                        results['repeatable_points'],
-                        results['gt_matches'],
-                        results['NM'],
-                        results['NCM'],
-                        rmse_str,
-                        mi_str,
-                        transform_error_str
-                    ))
-                else:
-                    f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10}\n".format(
-                        method,
-                        results['total_points'],
-                        results['repeatable_points'],
-                        results['gt_matches'],
-                        results['NM'],
-                        results['NCM'],
-                        rmse_str,
-                        mi_str
-                    ))
+                f.write("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15.4f}\n".format(
+                    method, 
+                    results['num_keypoints_sar'],
+                    results['num_keypoints_opt'],
+                    results['num_matches'],
+                    results['num_inliers'],
+                    matrix_rmse_str,
+                    results['execution_time']
+                ))
             
             f.write("\n\n")
         
-        # Methods comparison section
+        # Methods comparison section - average across all sets
         f.write("METHODS COMPARISON (average across all sets)\n")
         f.write("=========================================\n\n")
         
@@ -281,109 +153,62 @@ def create_summary_report(results_by_set, methods, output_dir):
         avg_metrics = {}
         for method in methods:
             avg_metrics[method] = {
-                'total_points': 0,
-                'repeatable_points': 0,
-                'gt_matches': 0,
-                'NM': 0,
-                'NCM': 0,
-                'rmse': 0,
-                'mutual_information': 0,
-                'transform_error': 0
+                'num_keypoints_sar': 0,
+                'num_keypoints_opt': 0,
+                'num_matches': 0,
+                'num_inliers': 0,
+                'matrix_rmse': 0,
+                'execution_time': 0
             }
             
             # Counters for averaging
             count = 0
-            rmse_count = 0
-            mi_count = 0
-            transform_error_count = 0
+            matrix_rmse_count = 0
             
             for set_results in results_by_set.values():
                 if method in set_results:
                     results = set_results[method]
                     count += 1
                     
-                    avg_metrics[method]['total_points'] += results['total_points']
-                    avg_metrics[method]['repeatable_points'] += results['repeatable_points']
-                    avg_metrics[method]['gt_matches'] += results['gt_matches']
-                    avg_metrics[method]['NM'] += results['NM']
-                    avg_metrics[method]['NCM'] += results['NCM']
+                    avg_metrics[method]['num_keypoints_sar'] += results['num_keypoints_sar']
+                    avg_metrics[method]['num_keypoints_opt'] += results['num_keypoints_opt']
+                    avg_metrics[method]['num_matches'] += results['num_matches']
+                    avg_metrics[method]['num_inliers'] += results['num_inliers']
+                    avg_metrics[method]['execution_time'] += results['execution_time']
                     
-                    # Handle RMSE from different sources (RIFT vs others)
-                    if 'rmse' in results and results['rmse'] is not None:
-                        avg_metrics[method]['rmse'] += results['rmse']
-                        rmse_count += 1
-                    elif 'rmse_landmarks' in results and results['rmse_landmarks'] is not None:
-                        avg_metrics[method]['rmse'] += results['rmse_landmarks']
-                        rmse_count += 1
-                    
-                    if 'mutual_information' in results and results['mutual_information'] is not None:
-                        avg_metrics[method]['mutual_information'] += results['mutual_information']
-                        mi_count += 1
-                    
-                    if 'transform_error' in results and results['transform_error'] is not None:
-                        avg_metrics[method]['transform_error'] += results['transform_error']
-                        transform_error_count += 1
+                    if 'matrix_rmse' in results and results['matrix_rmse'] is not None:
+                        avg_metrics[method]['matrix_rmse'] += results['matrix_rmse']
+                        matrix_rmse_count += 1
             
             # Calculate averages
             if count > 0:
-                avg_metrics[method]['total_points'] /= count
-                avg_metrics[method]['repeatable_points'] /= count
-                avg_metrics[method]['gt_matches'] /= count
-                avg_metrics[method]['NM'] /= count
-                avg_metrics[method]['NCM'] /= count
+                avg_metrics[method]['num_keypoints_sar'] /= count
+                avg_metrics[method]['num_keypoints_opt'] /= count
+                avg_metrics[method]['num_matches'] /= count
+                avg_metrics[method]['num_inliers'] /= count
+                avg_metrics[method]['execution_time'] /= count
             
-            if rmse_count > 0:
-                avg_metrics[method]['rmse'] /= rmse_count
+            if matrix_rmse_count > 0:
+                avg_metrics[method]['matrix_rmse'] /= matrix_rmse_count
             else:
-                avg_metrics[method]['rmse'] = None
-            
-            if mi_count > 0:
-                avg_metrics[method]['mutual_information'] /= mi_count
-            else:
-                avg_metrics[method]['mutual_information'] = None
-            
-            if transform_error_count > 0:
-                avg_metrics[method]['transform_error'] /= transform_error_count
-            else:
-                avg_metrics[method]['transform_error'] = None
+                avg_metrics[method]['matrix_rmse'] = None
         
         # Write average metrics table
-        if has_transform_error:
-            f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}\n".format(
-                "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI", "Transform Err"))
-            f.write("-" * 105 + "\n")
-        else:
-            f.write("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10}\n".format(
-                "Method", "Total Pts", "Repeatable", "GT Matches", "NM", "NCM", "RMSE Landmarks", "MI"))
-            f.write("-" * 90 + "\n")
+        f.write("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15}\n".format(
+            "Method", "SAR Keypoints", "OPT Keypoints", "Matches", "Inliers", "Matrix RMSE", "Time (sec)"))
+        f.write("-" * 105 + "\n")
         
         for method, metrics in avg_metrics.items():
-            rmse_str = f"{metrics['rmse']:.4f}" if metrics['rmse'] is not None else "N/A"
-            mi_str = f"{metrics['mutual_information']:.4f}" if metrics['mutual_information'] is not None else "N/A"
-            transform_error_str = f"{metrics['transform_error']:.4f}" if metrics['transform_error'] is not None else "N/A"
+            matrix_rmse_str = f"{metrics['matrix_rmse']:.6f}" if metrics['matrix_rmse'] is not None else "N/A"
             
-            if has_transform_error:
-                f.write("{:<10} {:<10.2f} {:<10.2f} {:<10.2f} {:<10.2f} {:<10.2f} {:<15} {:<10} {:<15}\n".format(
-                    method,
-                    metrics['total_points'],
-                    metrics['repeatable_points'],
-                    metrics['gt_matches'],
-                    metrics['NM'],
-                    metrics['NCM'],
-                    rmse_str,
-                    mi_str,
-                    transform_error_str
-                ))
-            else:
-                f.write("{:<10} {:<10.2f} {:<10.2f} {:<10.2f} {:<10.2f} {:<10.2f} {:<15} {:<10}\n".format(
-                    method,
-                    metrics['total_points'],
-                    metrics['repeatable_points'],
-                    metrics['gt_matches'],
-                    metrics['NM'],
-                    metrics['NCM'],
-                    rmse_str,
-                    mi_str
-                ))
+            f.write("{:<10} {:<15.2f} {:<15.2f} {:<15.2f} {:<15.2f} {:<20} {:<15.4f}\n".format(
+                method,
+                metrics['num_keypoints_sar'],
+                metrics['num_keypoints_opt'],
+                metrics['num_matches'],
+                metrics['num_inliers'],
+                matrix_rmse_str,
+                metrics['execution_time']
+            ))
     
     print(f"Summary report saved to: {report_path}")

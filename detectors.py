@@ -13,8 +13,8 @@ try:
     from rift2.FeatureDetection import FeatureDetection
     from rift2.kptsOrientation import kptsOrientation
     from rift2.FeatureDescribe import FeatureDescribe
-    from rift2.FSC import FSC
-    from rift2.image_fusion import image_fusion
+   # from rift2.FSC import FSC
+   # from rift2.image_fusion import image_fusion
     RIFT_AVAILABLE = True
     print("RIFT2 module is available and will be used if selected.")
 except ImportError:
@@ -70,7 +70,7 @@ def create_detector_and_matcher(method):
 
 def process_rift(sar_img, opt_img):
     """
-    Process a pair of images using the RIFT2 algorithm.
+    Process a pair of images using the RIFT2 algorithm with OpenCV-based transformation.
     
     This function handles the complete RIFT2 pipeline:
     1. Feature detection on both images
@@ -78,7 +78,7 @@ def process_rift(sar_img, opt_img):
     3. Feature description
     4. Feature matching
     5. Removing duplicate matches
-    6. Estimating transformation using FSC (Fast Sample Consensus)
+    6. Estimating transformation using OpenCV's findHomography instead of FSC
     7. Registering the images
     
     Args:
@@ -101,6 +101,8 @@ def process_rift(sar_img, opt_img):
         raise ImportError("RIFT2 modules are not available. Please install the RIFT2 package.")
     
     import time
+    import numpy as np
+    import cv2
     from utils import make_match_image
     
     start_time = time.time()
@@ -138,7 +140,7 @@ def process_rift(sar_img, opt_img):
     
     # Apply ratio test
     good_matches = []
-    ratio_thresh = 1  # Take all matches (RIFT2 handles filtering in subsequent steps)
+    ratio_thresh = 1.0  # Take all matches (filtering done in RANSAC)
     for m in matches:
         if len(m) == 2:
             if m[0].distance < ratio_thresh * m[1].distance:
@@ -160,24 +162,143 @@ def process_rift(sar_img, opt_img):
     matched_pts2_unique, idxs = np.unique(matched_pts2, axis=0, return_index=True)
     matched_pts1_unique = matched_pts1[idxs]
     
-    # Estimate transformation using Fast Sample Consensus (FSC)
-    H, rmse, consensus_pts1, consensus_pts2 = FSC(
-        matched_pts1_unique, 
-        matched_pts2_unique,
-        change_form='similarity',
-        error_t=3.0
+    # Check if we have enough matches
+    if len(matched_pts1_unique) < 4:
+        print("Not enough unique matches for homography estimation.")
+        return {
+            'NM': 0,
+            'NCM': 0,
+            'ratio': 0,
+            'reg_time': time.time() - start_time,
+            'rmse': float('inf'),
+            'transformation_matrix': np.eye(3),
+            'registered_img': sar_img_bgr.copy(),
+            'mosaic_img': None,
+            'matches_img': None,
+            'keypoints_sar': None,
+            'keypoints_opt': None,
+            'good_matches': None
+        }
+    
+    # MODIFIED: Use OpenCV's findHomography instead of FSC
+    ransac_threshold = 3.0
+    H, mask = cv2.findHomography(
+        matched_pts2_unique,  # Source points (opt_img)
+        matched_pts1_unique,  # Destination points (sar_img)
+        method=cv2.RANSAC,
+        ransacReprojThreshold=ransac_threshold
     )
     
-    # Generate registered and mosaic images
-    registered_img, mosaic_img = image_fusion(sar_img_bgr, opt_img_bgr, H)
+    # If homography estimation failed, return identity
+    if H is None:
+        print("Homography estimation failed!")
+        H = np.eye(3)
+        mask = np.zeros(len(matched_pts1_unique), dtype=np.uint8)
+    
+    # Extract inlier points
+    inlier_idxs = np.where(mask.ravel() == 1)[0]
+    consensus_pts1 = matched_pts1_unique[inlier_idxs]
+    consensus_pts2 = matched_pts2_unique[inlier_idxs]
+    
+    # Calculate RMSE for inliers
+    rmse = 0.0
+    if len(consensus_pts1) > 0:
+        # For perspective transform, we need to apply perspective division
+        ones = np.ones((len(consensus_pts2), 1))
+        pts_homogeneous = np.hstack((consensus_pts2, ones))
+        transformed = np.dot(H, pts_homogeneous.T).T
+        transformed = transformed[:, :2] / transformed[:, 2:]
+        errors = transformed - consensus_pts1
+        rmse = np.sqrt(np.mean(np.sum(errors**2, axis=1)))
+    
+    # MODIFIED: Simplified image fusion with perspective transform
+    def simplified_image_fusion(image1, image2, H):
+        """
+        Perform simplified image fusion using perspective transform.
+        """
+        # Get image dimensions
+        h1, w1 = image1.shape[:2]
+        h2, w2 = image2.shape[:2]
+        
+        # Create a canvas large enough to hold both images
+        output_size = (3*w1, 3*h1)
+        
+        # Create the offset transformation to center the result
+        offset = np.array([[1, 0, w1], [0, 1, h1], [0, 0, 1]], dtype=np.float64)
+        
+        # Combine transformations
+        final_transform = offset @ H
+        
+        # Warp images onto the canvas
+        warped1 = cv2.warpPerspective(image1, offset, output_size)
+        warped2 = cv2.warpPerspective(image2, final_transform, output_size)
+        
+        # Create fusion image
+        fusion = np.zeros_like(warped1, dtype=np.float64)
+        
+        # Blend where both images exist
+        mask1 = (warped1 > 0)
+        mask2 = (warped2 > 0)
+        both = mask1 & mask2
+        only1 = mask1 & (~mask2)
+        only2 = mask2 & (~mask1)
+        
+        fusion[both] = (warped1[both].astype(np.float64) + warped2[both].astype(np.float64)) / 2
+        fusion[only1] = warped1[only1]
+        fusion[only2] = warped2[only2]
+        
+        fusion = np.clip(fusion, 0, 255).astype(np.uint8)
+        
+        # Create a simple checkerboard mosaic
+        mosaic = np.zeros_like(fusion)
+        block_size = 64
+        
+        # Create checkerboard masks
+        y_blocks = fusion.shape[0] // block_size + 1
+        x_blocks = fusion.shape[1] // block_size + 1
+        
+        for y in range(y_blocks):
+            for x in range(x_blocks):
+                y1 = y * block_size
+                y2 = min((y + 1) * block_size, fusion.shape[0])
+                x1 = x * block_size
+                x2 = min((x + 1) * block_size, fusion.shape[1])
+                
+                if (y + x) % 2 == 0:
+                    mosaic[y1:y2, x1:x2] = warped1[y1:y2, x1:x2]
+                else:
+                    mosaic[y1:y2, x1:x2] = warped2[y1:y2, x1:x2]
+        
+        # Crop the images to remove unnecessary black borders
+        # Find non-zero pixels
+        non_zero = np.where(fusion > 0)
+        if len(non_zero[0]) > 0 and len(non_zero[1]) > 0:
+            y_min, y_max = np.min(non_zero[0]), np.max(non_zero[0])
+            x_min, x_max = np.min(non_zero[1]), np.max(non_zero[1])
+            
+            # Add a small border
+            border = 10
+            y_min = max(0, y_min - border)
+            y_max = min(fusion.shape[0] - 1, y_max + border)
+            x_min = max(0, x_min - border)
+            x_max = min(fusion.shape[1] - 1, x_max + border)
+            
+            # Crop both images
+            fusion = fusion[y_min:y_max+1, x_min:x_max+1]
+            mosaic = mosaic[y_min:y_max+1, x_min:x_max+1]
+        
+        return fusion, mosaic
+    
+    # Generate registered and mosaic images using simplified approach
+    registered_img, mosaic_img = simplified_image_fusion(sar_img_bgr, opt_img_bgr, H)
     
     # Create match visualization
     matches_img = make_match_image(sar_img_bgr, opt_img_bgr, consensus_pts1, consensus_pts2)
     
     # Calculate statistics
-    NM = matched_pts2_unique.shape[0]  # Number of matches after removing duplicates
-    NCM = consensus_pts2.shape[0]      # Number of consensus (inlier) matches
-    ratio = NM / NCM if NCM != 0 else 0
+    NM = matched_pts1_unique.shape[0]  # Number of matches after removing duplicates
+    NCM = consensus_pts1.shape[0]      # Number of consensus (inlier) matches
+    ratio = NCM / NM if NM != 0 else 0
     execution_time = time.time() - start_time
     
     # Return results as a dictionary

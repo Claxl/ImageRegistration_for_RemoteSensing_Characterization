@@ -3,7 +3,7 @@ from .LSM import LSM
 
 def FSC(cor1: np.ndarray,
         cor2: np.ndarray,
-        change_form: str = 'similarity',
+        change_form: str = 'affine',
         error_t: float = 3.0):
     """
     Python version of FSC.m

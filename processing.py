@@ -11,7 +11,6 @@ import numpy as np
 from detectors import create_detector_and_matcher, RIFT_AVAILABLE
 from registration import process_image_pair_with_gt
 from utils import load_ground_truth, find_matching_files_in_folder
-from metrics import compute_transformation_error
 from reporting import save_metrics, compare_methods, create_summary_report
 from visualization import visualize_results
 
@@ -52,47 +51,28 @@ def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, v
                 
             detector, matcher = create_detector_and_matcher(method)
             results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
-                                              landmarks_mov, landmarks_fix, ratio_thresh)
-            
-            # Add transformation error if ground truth is available
-            if transform_gt is not None and results['transformation_matrix'] is not None:
-                transform_errors = compute_transformation_error(
-                    results['transformation_matrix'], transform_gt)
-                results.update(transform_errors)
+                                              landmarks_mov, landmarks_fix, transform_gt, ratio_thresh)
             
             results_by_method[method] = results
             
             # Print key metrics
-            print(f"Total points detected: {results['total_points']}")
-            print(f"Repeatable points: {results['repeatable_points']}")
-            print(f"Ground truth matches: {results['gt_matches']}")
-            print(f"Number of matches (NM): {results['NM']}")
-            print(f"Number of correct matches (NCM): {results['NCM']}")
-            print(f"Ratio NM/NCM: {results['ratio']:.4f}")
+            print(f"SAR Keypoints: {results['num_keypoints_sar']}")
+            print(f"Optical Keypoints: {results['num_keypoints_opt']}")
+            print(f"Number of matches: {results['num_matches']}")
+            print(f"Number of inliers: {results['num_inliers']}")
             
-            if 'rmse' in results and results['rmse'] is not None:
-                print(f"RMSE between landmarks: {results['rmse']:.4f}")
-            elif 'rmse_landmarks' in results and results['rmse_landmarks'] is not None:
-                print(f"RMSE between landmarks: {results['rmse_landmarks']:.4f}")
+            if results['matrix_rmse'] is not None:
+                print(f"Matrix RMSE: {results['matrix_rmse']:.6f}")
             else:
-                print("RMSE between landmarks: N/A")
+                print("Matrix RMSE: N/A")
             
-            if results['mutual_information'] is not None:
-                print(f"Mutual Information: {results['mutual_information']:.4f}")
-            else:
-                print("Mutual Information: N/A")
-            
-            # Print transformation error metrics if available
-            if 'transform_error' in results and results['transform_error'] is not None:
-                print(f"Transform error: {results['transform_error']:.4f}")
-                print(f"Matrix RMSE: {results['rmse']:.4f}")
-                print(f"Frobenius norm: {results['frobenius']:.4f}")
+            print(f"Execution time: {results['execution_time']:.4f} sec")
             
             # Save metrics
             save_metrics(results, method, output_dir)
             
             # Visualize results
-            if visualize:
+            if visualize and landmarks_mov is not None and landmarks_fix is not None:
                 visualize_results(sar_img, opt_img, results, landmarks_mov, landmarks_fix, method, output_dir, transform_gt)
         
         except Exception as e:
@@ -167,41 +147,22 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 
                 detector, matcher = create_detector_and_matcher(method)
                 results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
-                                                  landmarks_mov, landmarks_fix, ratio_thresh)
-                
-                # Add transformation error if ground truth is available
-                if transform_gt is not None and results['transformation_matrix'] is not None:
-                    transform_errors = compute_transformation_error(
-                        results['transformation_matrix'], transform_gt)
-                    results.update(transform_errors)
+                                                  landmarks_mov, landmarks_fix, transform_gt, ratio_thresh)
                 
                 results_by_method[method] = results
                 
                 # Print key metrics
-                print(f"Total points detected: {results['total_points']}")
-                print(f"Repeatable points: {results['repeatable_points']}")
-                print(f"Ground truth matches: {results['gt_matches']}")
-                print(f"Number of matches (NM): {results['NM']}")
-                print(f"Number of correct matches (NCM): {results['NCM']}")
-                print(f"Ratio NM/NCM: {results['ratio']:.4f}")
+                print(f"SAR Keypoints: {results['num_keypoints_sar']}")
+                print(f"Optical Keypoints: {results['num_keypoints_opt']}")
+                print(f"Number of matches: {results['num_matches']}")
+                print(f"Number of inliers: {results['num_inliers']}")
                 
-                if 'rmse' in results and results['rmse'] is not None:
-                    print(f"RMSE between landmarks: {results['rmse']:.4f}")
-                elif 'rmse_landmarks' in results and results['rmse_landmarks'] is not None:
-                    print(f"RMSE between landmarks: {results['rmse_landmarks']:.4f}")
+                if results['matrix_rmse'] is not None:
+                    print(f"Matrix RMSE: {results['matrix_rmse']:.6f}")
                 else:
-                    print("RMSE between landmarks: N/A")
-                
-                if results['mutual_information'] is not None:
-                    print(f"Mutual Information: {results['mutual_information']:.4f}")
-                else:
-                    print("Mutual Information: N/A")
-                
-                # Print transformation error metrics if available
-                if 'transform_error' in results and results['transform_error'] is not None:
-                    print(f"Transform error: {results['transform_error']:.4f}")
-                    print(f"Matrix RMSE: {results['rmse']:.4f}")
-                    print(f"Frobenius norm: {results['frobenius']:.4f}")
+                    print("Matrix RMSE: N/A")
+                    
+                print(f"Execution time: {results['execution_time']:.4f} sec")
                 
                 # Save metrics
                 save_metrics(results, method, set_output_dir)

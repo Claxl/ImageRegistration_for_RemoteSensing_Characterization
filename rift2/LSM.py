@@ -2,7 +2,7 @@ import numpy as np
 
 def LSM(match1: np.ndarray,
         match2: np.ndarray,
-        change_form: str = 'similarity'):
+        change_form: str = 'affine'):
     """
     Python version of LSM.m
 

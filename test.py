@@ -1,21 +1,37 @@
 import numpy as np
 import cv2
+# Import the visualization functions
+from rift2.visualization import visualize_matches, visualize_transformation, visualize_fusion_results
+
 # Import from your original rift2 package
-from .FeatureDetection import FeatureDetection
-from .kptsOrientation import kptsOrientation
-from .FeatureDescribe import FeatureDescribe    
-# We'll use OpenCV for the transformation part instead of FSC
-# from rift2.FSC import FSC
-# from rift2.image_fusion import image_fusion
+from rift2.FeatureDetection import FeatureDetection
+from rift2.kptsOrientation import kptsOrientation
+from rift2.FeatureDescribe import FeatureDescribe
 
-def demo_RIFT2(path1: str, path2: str):
-
+def demo_RIFT2(path1: str, path2: str, transform_type='similarity', visualize=True):
+    """
+    Demo RIFT2 pipeline with simplified transformation using OpenCV.
+    
+    Args:
+        path1, path2: Paths to the input images
+        transform_type: Type of transformation ('similarity', 'affine', 'perspective')
+        visualize: Whether to show visualizations
+        
+    Returns:
+        Tuple containing:
+        - H: 3x3 transformation matrix
+        - fusion_image: Fused image result
+        - mosaic_image: Checkerboard mosaic image
+        - inliers_kp1: Inlier keypoints from image 1
+        - inliers_kp2: Inlier keypoints from image 2
+        - rmse: Root mean square error of inliers
+    """
     # 1) Read images
     im1 = cv2.imread(path1, cv2.IMREAD_COLOR)
     im2 = cv2.imread(path2, cv2.IMREAD_COLOR)
     if im1 is None or im2 is None:
         print("Error reading input images.")
-        return
+        return None, None, None, None, None, None
 
     # If single channel, replicate to 3-ch for consistency
     if im1.ndim == 2:
@@ -29,7 +45,6 @@ def demo_RIFT2(path1: str, path2: str):
     key2, m2, eo2 = FeatureDetection(im2, 4, 6, 5000)
 
     print("Orientation")
-
     # 3) Orientation - Keep this part unchanged
     kpts1 = kptsOrientation(key1, m1, True, 96)
     kpts2 = kptsOrientation(key2, m2, True, 96)
@@ -42,6 +57,7 @@ def demo_RIFT2(path1: str, path2: str):
     des2 = des2.T  # so it's (numKeypoints2, descriptorDimension)
 
     # 5) Match the descriptors - Keep this part unchanged
+    print("Matching features")
     bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
     matches = bf.knnMatch(des1.astype(np.float32),
                           des2.astype(np.float32),
@@ -57,6 +73,10 @@ def demo_RIFT2(path1: str, path2: str):
         elif len(m) == 1:
             good.append(m[0])
 
+    if not good:
+        print("No good matches found!")
+        return None, None, None, None, None, None
+
     matchedPoints1 = []
     matchedPoints2 = []
     for g in good:
@@ -69,10 +89,15 @@ def demo_RIFT2(path1: str, path2: str):
     # 6) Remove duplicates, etc. - Keep this part unchanged
     matchedPoints2_unique, idxs = np.unique(matchedPoints2, axis=0, return_index=True)
     matchedPoints1_unique = matchedPoints1[idxs]
+    
+    print(f"Number of unique matches: {len(matchedPoints1_unique)}")
+    
+    if len(matchedPoints1_unique) < 3:
+        print("Not enough unique matches for transformation estimation!")
+        return None, None, None, None, None, None
 
     # 7) MODIFIED: Use OpenCV for transformation estimation instead of FSC
-    # Choose transformation type ('similarity', 'affine', or 'perspective')
-    transform_type = 'similarity'
+    print(f"Estimating {transform_type} transformation")
     ransac_threshold = 3.0
     
     # OpenCV expects source points, then destination points
@@ -154,7 +179,7 @@ def demo_RIFT2(path1: str, path2: str):
         offset = np.array([[1, 0, w1], [0, 1, h1], [0, 0, 1]], dtype=np.float64)
         
         # Combine transformations
-        final_transform = offset @ H_full
+        final_transform = offset @ H
         
         # Warp images onto the canvas
         warped1 = cv2.warpPerspective(image1, offset, output_size)
@@ -216,20 +241,52 @@ def demo_RIFT2(path1: str, path2: str):
         
         return fusion, mosaic
     
-    # 9) Fusion and visualization
+    # 9) Apply image fusion
     fusion_image, mosaic_image = simplified_image_fusion(im1, im2, H_full)
     
-    # Show the results
-    cv2.imshow("Fusion Result", fusion_image)
-    cv2.imshow("Mosaic Visualization", mosaic_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # 10) Visualize results if requested
+    if visualize:
+        # Visualize matches
+        visualize_matches(im1, im2, matchedPoints1_unique, matchedPoints2_unique, 
+                         mask.ravel().astype(bool), 
+                         title=f"{transform_type.upper()} - Matching Points")
+        
+        # Visualize transformation
+        visualize_transformation(im1, im2, H_full, 
+                               title=f"{transform_type.upper()} - Transformation (RMSE: {rmse:.4f})")
+        
+        # Visualize fusion results
+        visualize_fusion_results(fusion_image, mosaic_image, 
+                               title=f"{transform_type.upper()} - Fusion Results")
+        
+        # Close all windows when done
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     return H_full, fusion_image, mosaic_image, c1, c2, rmse
 
 
 if __name__ == '__main__':
-    path1 = 'DATASET/OSdataset/512/test/sar/sar1.png'
-    path2 = 'DATASET/OSdataset/512/test/opt/opt1.png'
-    H, fusion, mosaic, inliers1, inliers2, rmse = demo_RIFT2(path1, path2)
-    print(f"Registration completed with RMSE: {rmse}")
+    # Paths to your images - update these to your actual paths
+    path2 = 'DATASET/RemoteSensing/SAR_Optical/SO1a.png'
+    path1 = 'DATASET/RemoteSensing/SAR_Optical/SO1b.png'
+    
+    # Test all transformation types
+    for transform_type in ['perspective']:
+        print(f"\n=== Testing {transform_type.upper()} transformation ===\n")
+        
+        H, fusion, mosaic, inliers1, inliers2, rmse = demo_RIFT2(
+            path1, path2, 
+            transform_type=transform_type,
+            visualize=True
+        )
+        
+        if H is not None:
+            print(f"Registration completed with RMSE: {rmse:.4f}")
+        else:
+            print(f"Registration failed for {transform_type} transformation")
+        
+        # Wait for a key press before continuing to the next transformation type
+        print("Press any key to continue to the next transformation type...")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()

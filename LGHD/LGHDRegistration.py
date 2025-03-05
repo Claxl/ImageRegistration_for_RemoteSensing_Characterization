@@ -10,9 +10,9 @@ import os
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from feature_descriptor import FeatureDescriptor
+from .feature_descriptor import FeatureDescriptor
 
-class ImageRegistration:
+class LGHDRegistration:
     """
     Class for registering RGB and LWIR images using the LGHD descriptor
     """
@@ -253,7 +253,7 @@ class ImageRegistration:
         else:
             lwir_gray = lwir_image
         
-        # Create checkerboard visualization
+        # Create checkerboard pattern
         checkerboard = np.zeros((h, w), dtype=bool)
         block_size = 32
         for i in range(0, h, block_size*2):
@@ -269,16 +269,32 @@ class ImageRegistration:
         overlay[..., 1] = warped_gray
         overlay[..., 2] = 0
         
-        # Create checkerboard visualization
+        # Create checkerboard visualization - FIXED
         checker = np.zeros((h, w, 3), dtype=np.uint8)
-        checker[checkerboard, :] = cv2.cvtColor(lwir_gray[checkerboard], cv2.COLOR_GRAY2BGR)
-        checker[~checkerboard, :] = warped_rgb[~checkerboard]
+        
+        # Convert both images to BGR format first
+        lwir_color = cv2.cvtColor(lwir_gray, cv2.COLOR_GRAY2BGR)
+        
+        if len(warped_rgb.shape) == 3:
+            warped_color = warped_rgb
+        else:
+            warped_color = cv2.cvtColor(warped_gray, cv2.COLOR_GRAY2BGR)
+        
+        # Use where to combine images based on the checkerboard mask
+        checker = np.where(
+            np.repeat(checkerboard[:, :, np.newaxis], 3, axis=2),
+            lwir_color,
+            warped_color
+        )
         
         # Create figure
         plt.figure(figsize=(15, 5))
         
         plt.subplot(1, 3, 1)
-        plt.imshow(warped_rgb)
+        if len(warped_rgb.shape) == 3:
+            plt.imshow(cv2.cvtColor(warped_rgb, cv2.COLOR_BGR2RGB))
+        else:
+            plt.imshow(warped_rgb, cmap='gray')
         plt.title('Warped RGB')
         plt.axis('off')
         
@@ -288,7 +304,7 @@ class ImageRegistration:
         plt.axis('off')
         
         plt.subplot(1, 3, 3)
-        plt.imshow(checker)
+        plt.imshow(cv2.cvtColor(checker, cv2.COLOR_BGR2RGB))
         plt.title('Checkerboard')
         plt.axis('off')
         
@@ -302,82 +318,3 @@ class ImageRegistration:
         
         return warped_rgb, overlay, checker
 
-def main():
-    """
-    Main function
-    """
-    import argparse
-    
-    # Parse arguments
-    parser = argparse.ArgumentParser(description='Image Registration using LGHD')
-    parser.add_argument('--rgb', type=str, required=True, help='Path to RGB image')
-    parser.add_argument('--lwir', type=str, required=True, help='Path to LWIR image')
-    parser.add_argument('--output_dir', type=str, default='results', help='Output directory')
-    parser.add_argument('--patch_size', type=int, default=96, help='Patch size for LGHD descriptor')
-    parser.add_argument('--max_keypoints', type=int, default=5000, help='Maximum number of keypoints')
-    parser.add_argument('--rgb_contrast', type=float, default=0.1, help='Minimum contrast for RGB keypoints')
-    parser.add_argument('--lwir_contrast', type=float, default=0.05, help='Minimum contrast for LWIR keypoints')
-    parser.add_argument('--ratio', type=float, default=0.8, help='Ratio test threshold')
-    parser.add_argument('--ransac', type=float, default=3.0, help='RANSAC threshold')
-    
-    args = parser.parse_args()
-    
-    # Create output directory
-    os.makedirs(args.output_dir, exist_ok=True)
-    
-    # Load images
-    rgb_image = cv2.imread(args.rgb)
-    lwir_image = cv2.imread(args.lwir, cv2.IMREAD_GRAYSCALE)
-    
-    if rgb_image is None:
-        raise ValueError(f"Could not load RGB image from {args.rgb}")
-    if lwir_image is None:
-        raise ValueError(f"Could not load LWIR image from {args.lwir}")
-    
-    # Create image registration object
-    reg = ImageRegistration(
-        patch_size=args.patch_size,
-        max_keypoints=args.max_keypoints,
-        min_rgb_contrast=args.rgb_contrast,
-        min_lwir_contrast=args.lwir_contrast,
-        ratio_threshold=args.ratio,
-        ransac_threshold=args.ransac
-    )
-    
-    # Register images
-    H, src_pts, dst_pts, inlier_mask = reg.register(rgb_image, lwir_image)
-    
-    if H is None:
-        print("Registration failed.")
-        return
-    
-    print(f"Registration successful with {np.sum(inlier_mask)} inliers.")
-    print(f"Homography matrix:\n{H}")
-    
-    # Visualize matches
-    matches_path = os.path.join(args.output_dir, 'matches.png')
-    reg.visualize_matches(rgb_image, lwir_image, src_pts, dst_pts, inlier_mask, matches_path)
-    print(f"Matches visualization saved to {matches_path}")
-    
-    # Visualize registration
-    registration_path = os.path.join(args.output_dir, 'registration.png')
-    warped_rgb, overlay, checker = reg.visualize_registration(rgb_image, lwir_image, H, registration_path)
-    print(f"Registration visualization saved to {registration_path}")
-    
-    # Save warped image
-    warped_path = os.path.join(args.output_dir, 'warped.png')
-    cv2.imwrite(warped_path, warped_rgb)
-    print(f"Warped image saved to {warped_path}")
-    
-    # Save overlay image
-    overlay_path = os.path.join(args.output_dir, 'overlay.png')
-    cv2.imwrite(overlay_path, overlay)
-    print(f"Overlay image saved to {overlay_path}")
-    
-    # Save checkerboard image
-    checker_path = os.path.join(args.output_dir, 'checkerboard.png')
-    cv2.imwrite(checker_path, checker)
-    print(f"Checkerboard image saved to {checker_path}")
-
-if __name__ == "__main__":
-    main()

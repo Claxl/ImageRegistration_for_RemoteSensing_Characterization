@@ -7,20 +7,26 @@ Feature detectors and matchers for image registration.
 
 import cv2
 import numpy as np
+import time
 
 # Check if RIFT modules are available
 try:
     from rift2.FeatureDetection import FeatureDetection
     from rift2.kptsOrientation import kptsOrientation
     from rift2.FeatureDescribe import FeatureDescribe
-   # from rift2.FSC import FSC
-   # from rift2.image_fusion import image_fusion
     RIFT_AVAILABLE = True
     print("RIFT2 module is available and will be used if selected.")
-except ImportError:
+except ImportError as e:
     RIFT_AVAILABLE = False
-    print("RIFT2 modules not available. RIFT method will be skipped if requested.")
-
+    print("RIFT2 modules not available. RIFT method will be skipped if requested. Exception: {e}")
+try:
+    from LGHD.feature_descriptor import FeatureDescriptor
+    from LGHD.LGHDRegistration import LGHDRegistration
+    LGHD_AVAILABLE = True
+    print("LGHD module is available and will be used if selected.")
+except ImportError as e:
+    LGHD_AVAILABLE = False
+    print(f"LGHD modules not available. LGHD method will be skipped if requested. Exception: {e}")
 def create_detector_and_matcher(method):
     """
     Given a method name ('SIFT', 'SURF', 'ORB', 'AKAZE', or 'RIFT'), returns a tuple (detector, matcher)
@@ -62,6 +68,13 @@ def create_detector_and_matcher(method):
             raise ValueError("RIFT method is not available. Please install the RIFT2 package.")
         # For RIFT, we'll use None for both detector and matcher since RIFT has its own pipeline
         # The actual RIFT processing will be handled separately
+        detector = None
+        matcher = None
+    elif method.upper() == "LGHD":
+        if not LGHD_AVAILABLE:
+            raise ValueError("LGHD method is not available. Please install the required packages.")
+        # For LGHD, similar to RIFT, we'll use None for both detector and matcher
+        # The actual LGHD processing will be handled separately
         detector = None
         matcher = None
     else:
@@ -315,4 +328,127 @@ def process_rift(sar_img, opt_img):
         'keypoints_sar': matched_pts1_unique,
         'keypoints_opt': matched_pts2_unique,
         'good_matches': consensus_pts1
+    }
+
+def process_lghd(sar_img, opt_img, patch_size=64, max_keypoints=500, 
+                min_rgb_contrast=0.1, min_lwir_contrast=0.05,
+                ratio_threshold=0.8, ransac_threshold=3.0):
+    """
+    Process a pair of images using the LGHD algorithm.
+    This function adapts the original ImageRegistration class to match the
+    expected interface of the image registration framework.
+    
+    Args:
+        sar_img (np.ndarray): SAR/LWIR image
+        opt_img (np.ndarray): Optical/RGB image
+        patch_size (int): Size of patches for LGHD descriptor
+        max_keypoints (int): Maximum number of keypoints to detect
+        min_rgb_contrast (float): Minimum contrast for RGB keypoint detection
+        min_lwir_contrast (float): Minimum contrast for LWIR keypoint detection
+        ratio_threshold (float): Ratio test threshold for descriptor matching
+        ransac_threshold (float): Threshold for RANSAC homography estimation
+        
+    Returns:
+        dict: Dictionary containing processing results
+    """
+
+    start_time = time.time()
+    
+    # Create LGHD image registration object
+    # This uses the original ImageRegistration class without modification
+    reg = LGHDRegistration(
+        patch_size=patch_size,
+        max_keypoints=max_keypoints,
+        min_rgb_contrast=min_rgb_contrast,
+        min_lwir_contrast=min_lwir_contrast,
+        ratio_threshold=ratio_threshold,
+        ransac_threshold=ransac_threshold
+    )
+    
+    # Register the images using the original method
+    H, src_pts, dst_pts, inlier_mask = reg.register(opt_img, sar_img)
+    
+    # Handle the case where registration fails
+    if H is None or src_pts is None or dst_pts is None:
+        print("LGHD registration failed.")
+        return {
+            'NM': 0,
+            'NCM': 0,
+            'ratio': 0,
+            'reg_time': time.time() - start_time,
+            'rmse': float('inf'),
+            'transformation_matrix': np.eye(3),
+            'registered_img': sar_img.copy() if len(sar_img.shape) == 3 else cv2.cvtColor(sar_img, cv2.COLOR_GRAY2BGR),
+            'mosaic_img': None,
+            'matches_img': None,
+            'keypoints_sar': None,
+            'keypoints_opt': None,
+            'good_matches': None
+        }
+    
+    # Count matches
+    NM = len(src_pts)  # Total matches
+    NCM = np.sum(inlier_mask) if inlier_mask is not None else 0  # Inliers
+    
+    # Calculate RMSE
+    rmse = 0.0
+    if NCM > 0:
+        # Get inlier points
+        inlier_src = src_pts[inlier_mask]
+        inlier_dst = dst_pts[inlier_mask]
+        
+        # Calculate RMSE
+        ones = np.ones((len(inlier_src), 1))
+        pts_homogeneous = np.hstack((inlier_src, ones))
+        transformed = np.dot(H, pts_homogeneous.T).T
+        transformed = transformed[:, :2] / transformed[:, 2:]
+        errors = transformed - inlier_dst
+        rmse = np.sqrt(np.mean(np.sum(errors**2, axis=1)))
+    
+    # Create registered image (warp optical to SAR space)
+    h, w = sar_img.shape[:2]
+    registered_img = reg.warp_image(opt_img, H, (h, w))
+    
+    import matplotlib.pyplot as plt
+
+    # Create visualization using the original method's functionality
+    if inlier_mask is not None:
+        # Use the visualization methods from the original class
+        # but save to memory instead of showing/saving
+        match_fig = plt.figure(figsize=(12, 6))
+        reg.visualize_matches(opt_img, sar_img, src_pts, dst_pts, inlier_mask)
+        
+        # Convert matplotlib figure to OpenCV image
+        match_fig.canvas.draw()
+        matches_img = np.frombuffer(match_fig.canvas.tostring_rgb(), dtype=np.uint8)
+        matches_img = matches_img.reshape(match_fig.canvas.get_width_height()[::-1] + (3,))
+        matches_img = cv2.cvtColor(matches_img, cv2.COLOR_RGB2BGR)
+        plt.close(match_fig)
+        
+        # Also create mosaic and fusion images
+        _, overlay, checkerboard = reg.visualize_registration(opt_img, sar_img, H)
+    else:
+        # Create empty images if visualization fails
+        matches_img = np.zeros((100, 100, 3), dtype=np.uint8)
+        overlay = np.zeros_like(registered_img)
+        checkerboard = np.zeros_like(registered_img)
+    
+    # Calculate statistics
+    reg_time = time.time() - start_time
+    ratio = NCM / NM if NM > 0 else 0
+    
+    # Return results in the format expected by the framework
+    return {
+        'NM': NM,
+        'NCM': NCM,
+        'ratio': ratio,
+        'reg_time': reg_time,
+        'rmse': rmse,
+        'transformation_matrix': H,
+        'registered_img': registered_img,
+        'mosaic_img': checkerboard,
+        'matches_img': matches_img,
+        'keypoints_sar': dst_pts,
+        'keypoints_opt': src_pts,
+        'good_matches': src_pts[inlier_mask] if inlier_mask is not None else None
     }

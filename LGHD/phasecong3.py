@@ -20,12 +20,12 @@ import cv2
 import numpy as np
 from scipy.fftpack import fftshift, ifftshift
 
-from tools import rayleighmode as _rayleighmode
-from tools import lowpassfilter as _lowpassfilter
+from .tools import rayleighmode as _rayleighmode
+from .tools import lowpassfilter as _lowpassfilter
 
 # Try and use the faster Fourier transform functions from the pyfftw module if
 # available
-from tools import fft2, ifft2
+from .tools import fft2, ifft2
 
 
 def phasecong(img, nscale=5, norient=6, minWaveLength=3, mult=2.1,

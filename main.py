@@ -36,7 +36,7 @@ import numpy as np
 import traceback
 
 from utils import get_image_files, extract_number, save_results
-from detectors import create_detector_and_matcher, RIFT_AVAILABLE
+from detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE
 from registration import process_image_pair
 from processing import process_with_ground_truth, process_from_folder
 
@@ -70,7 +70,9 @@ def main():
     if "RIFT" in methods and not RIFT_AVAILABLE:
         print("Warning: RIFT method was requested but is not available. It will be skipped.")
         methods = [m for m in methods if m != "RIFT"]
-    
+    if "LGHD" in methods and not LGHD_AVAILABLE:
+        print("Warning: LGHD method was requested but is not available. It will be skipped.")
+        methods = [m for m in methods if m != "LGHD"]
     # Process from a single folder containing both images and ground truth
     if args.data_folder:
         print(f"Processing files from folder: {args.data_folder}")
@@ -157,12 +159,16 @@ def main():
                 if method.upper() == "RIFT" and not RIFT_AVAILABLE:
                     print(f"Skipping RIFT method as it's not available")
                     continue
-                
+                    
+                # Skip LGHD if not available
+                if method.upper() == "LGHD" and not LGHD_AVAILABLE:
+                    print(f"Skipping LGHD method as it's not available")
+                    continue
+                    
                 detector, matcher = create_detector_and_matcher(method)
             except Exception as e:
                 print(f"Skipping method {method} due to error: {e}")
                 continue
-
             total_NM = 0
             total_NCM = 0
             registration_times = []
@@ -175,7 +181,7 @@ def main():
                 try:
                     # Process the images using the appropriate method
                     NM, NCM, ratio, reg_time, registered_img, matches_img = process_image_pair(
-                        sar_img_path, opt_img_path, detector, matcher, args.ratio_thresh)
+                        sar_img_path, opt_img_path, detector, matcher, args.ratio_thresh,method=method)
                     
                     print(f"  NM: {NM}, NCM: {NCM}, Ratio: {ratio:.2f}, Time: {reg_time:.3f} sec")
                     total_NM += NM

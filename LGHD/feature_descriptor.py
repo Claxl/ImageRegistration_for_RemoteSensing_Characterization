@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
-from lghd import lghd
-from phasecong3 import phasecong
+from .lghd import lghd
+from .phasecong3 import phasecong
 
 class FeatureDescriptor:
     """
@@ -124,4 +124,4 @@ class FeatureDescriptor:
     @staticmethod
     def lghd_default_parameters():
         """Default parameters for LGHD"""
-        return {'patch_size': 96}
+        return {'patch_size': 100}

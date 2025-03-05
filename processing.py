@@ -8,7 +8,7 @@ High-level processing functions for handling different registration scenarios.
 import os
 import cv2
 import numpy as np
-from detectors import create_detector_and_matcher, RIFT_AVAILABLE
+from detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE
 from registration import process_image_pair_with_gt
 from utils import load_ground_truth, find_matching_files_in_folder
 from reporting import save_metrics, compare_methods, create_summary_report
@@ -51,7 +51,7 @@ def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, v
                 
             detector, matcher = create_detector_and_matcher(method)
             results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
-                                              landmarks_mov, landmarks_fix, transform_gt, ratio_thresh)
+                                              landmarks_mov, landmarks_fix, transform_gt, ratio_thresh,method)
             
             results_by_method[method] = results
             
@@ -84,7 +84,6 @@ def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, v
     compare_methods(results_by_method, output_dir)
     
     return results_by_method
-
 def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh=0.7, visualize=True):
     """
     Process images and ground truth files from a single folder.
@@ -145,9 +144,15 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                     print(f"Skipping RIFT method as it's not available")
                     continue
                 
+                # Skip LGHD if not available
+                if method.upper() == "LGHD" and not LGHD_AVAILABLE:
+                    print(f"Skipping LGHD method as it's not available")
+                    continue
+                
                 detector, matcher = create_detector_and_matcher(method)
                 results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
-                                                  landmarks_mov, landmarks_fix, transform_gt, ratio_thresh)
+                                                  landmarks_mov, landmarks_fix, transform_gt, 
+                                                  ratio_thresh, method)  # Pass method name
                 
                 results_by_method[method] = results
                 
@@ -156,9 +161,13 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 print(f"Optical Keypoints: {results['num_keypoints_opt']}")
                 print(f"Number of matches: {results['num_matches']}")
                 print(f"Number of inliers: {results['num_inliers']}")
-                print(results.keys())
-                if results['matrix_rmse'] is not None:
-                    print(f"Matrix RMSE: {results['matrix_rmse']:.6f}")
+                
+                if 'matrix_rmse' in results and results['matrix_rmse'] is not None:
+                    # Check if matrix_rmse is a numpy array and handle accordingly
+                    if isinstance(results['matrix_rmse'], np.ndarray):
+                        print(f"Matrix RMSE: {float(results['matrix_rmse']):.6f}")
+                    else:
+                        print(f"Matrix RMSE: {results['matrix_rmse']:.6f}")
                 else:
                     print("Matrix RMSE: N/A")
                     
@@ -169,7 +178,7 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 
                 # Visualize results
                 if visualize:
-                    visualize_results(sar_img, opt_img, results,method, set_output_dir)
+                    visualize_results(sar_img, opt_img, results, method, set_output_dir)
             
             except Exception as e:
                 print(f"Error processing with {method} for set {set_name}: {e}")

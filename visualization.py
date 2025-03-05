@@ -134,8 +134,8 @@ def visualize_transformation(im1, im2, H, title="Image Transformation", output_d
     warped_im2 = cv2.warpPerspective(im2, offset_matrix @ H, (result_w, result_h))
     
     # Create edge images to better visualize the alignment
-    gray1 = cv2.cvtColor(warped_im1, cv2.COLOR_BGR2GRAY)
-    gray2 = cv2.cvtColor(warped_im2, cv2.COLOR_BGR2GRAY)
+    gray1 = cv2.cvtColor(warped_im1, cv2.COLOR_BGR2RGB)
+    gray2 = cv2.cvtColor(warped_im2, cv2.COLOR_BGR2RGB)
     
     edges1 = cv2.Canny(gray1, 50, 150)
     edges2 = cv2.Canny(gray2, 50, 150)

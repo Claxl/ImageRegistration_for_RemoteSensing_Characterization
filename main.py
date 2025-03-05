@@ -179,6 +179,7 @@ def main():
                 opt_img_path = opt_dict[key]
                 print(f"Processing pair: SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
                 try:
+                    print(f"  Using {method} method")
                     # Process the images using the appropriate method
                     NM, NCM, ratio, reg_time, registered_img, matches_img = process_image_pair(
                         sar_img_path, opt_img_path, detector, matcher, args.ratio_thresh,method=method)

@@ -48,7 +48,7 @@ def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, v
             if method.upper() == "RIFT" and not RIFT_AVAILABLE:
                 print(f"Skipping RIFT method as it's not available")
                 continue
-                
+            print(f"Creating {method}")
             detector, matcher = create_detector_and_matcher(method)
             results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
                                               landmarks_mov, landmarks_fix, transform_gt, ratio_thresh,method)

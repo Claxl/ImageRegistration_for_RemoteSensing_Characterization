@@ -63,6 +63,9 @@ def create_detector_and_matcher(method):
     elif method.upper() == "AKAZE":
         detector = cv2.AKAZE_create()
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+    elif method.upper() == "BRISK":
+        detector = cv2.BRISK_create()
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
     elif method.upper() == "RIFT":
         if not RIFT_AVAILABLE:
             raise ValueError("RIFT method is not available. Please install the RIFT2 package.")

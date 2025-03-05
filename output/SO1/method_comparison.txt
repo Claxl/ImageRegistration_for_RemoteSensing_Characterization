@@ -1,0 +1,6 @@
+METHOD COMPARISON
+===============
+
+Method     SAR Keypoints   OPT Keypoints   Matches         Inliers         Matrix RMSE          Time (sec)     
+---------------------------------------------------------------------------------------------------------
+brisk      7844            75              26              5               161.529842           0.1934         

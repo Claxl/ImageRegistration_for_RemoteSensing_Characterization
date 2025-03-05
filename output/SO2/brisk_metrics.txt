@@ -1,0 +1,15 @@
+Metrics for brisk
+=================
+
+Number of keypoints detected in SAR image: 18241
+Number of keypoints detected in optical image: 242
+Number of matches between images: 7
+Number of inlier matches after RANSAC: 4
+RMSE between calculated and ground truth matrices: 149.010834
+Total execution time: 0.2413 sec
+
+
+Transformation Matrix:
+-1.025694 -0.736803 442.150083
+-0.134513 -0.115163 63.696004
+-0.002289 -0.001683 1.000000

@@ -9,9 +9,8 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  AKAZE : Implemented
 -  RIFT : Implemented
 -  HOPC : More analysis needed
--  LGHD : Parameters Estimation
+-  LGHD : Implemented, but need more analysis
 -  OS-SIFT : To port in Python
--  ASIFT : Parameters Estimation
 -   ~~POS-GIFT ~~ : Code obfuscated
 -   ~~CoFSM ~~ : Code obfuscated
 

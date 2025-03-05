@@ -206,7 +206,7 @@ def process_image_pair(sar_img_path, opt_img_path):
     ratio = NM/ NCM if NCM != 0 else 0
     reg_time = time.time() - start_reg_time
     matches_img = make_match_image(sar_img, opt_img, c1, c2)
-    return NM, NCM, ratio, reg_time, registered_img, matches_img, rmse
+    return NM, NCM, ratio, reg_time, registered_img, matches_img, rmse, mosaic_img
 
 def main():
     def parse_arguments():
@@ -293,7 +293,7 @@ def main():
         opt_img_path = opt_dict[key]
         print(f"Processing pair: SAR: {os.path.basename(sar_img_path)} <-> Optical: {os.path.basename(opt_img_path)}")
         try:
-            NM, NCM, ratio, reg_time, registered_img, matches_img, rmse = process_image_pair(
+            NM, NCM, ratio, reg_time, registered_img, matches_img, rmse, mosaic_img = process_image_pair(
                 sar_img_path, opt_img_path)
             print(f"  NM: {NM}, NCM: {NCM}, Ratio: {ratio:.2f}, Time: {reg_time:.3f} sec, RMSE: {rmse:.3f}")
             total_NM += NM
@@ -303,7 +303,7 @@ def main():
             
             # Save results by default or if explicitly requested
             if args.save or output_dir != "output":
-                save_results(sar_img_path, opt_img_path, registered_img, matches_img)
+                save_results(sar_img_path, opt_img_path, mosaic_img, matches_img)
         except Exception as e:
             print(f"  Error processing pair for key {key}: {e}")
             import traceback

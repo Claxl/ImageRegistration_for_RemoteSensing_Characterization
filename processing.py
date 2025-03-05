@@ -44,11 +44,12 @@ def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, v
     for method in methods:
         print(f"\n==== Processing using {method} ====")
         try:
+            
             # Skip RIFT if not available
             if method.upper() == "RIFT" and not RIFT_AVAILABLE:
                 print(f"Skipping RIFT method as it's not available")
                 continue
-            print(f"Creating {method}")
+            
             detector, matcher = create_detector_and_matcher(method)
             results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
                                               landmarks_mov, landmarks_fix, transform_gt, ratio_thresh,method)
@@ -148,7 +149,7 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 if method.upper() == "LGHD" and not LGHD_AVAILABLE:
                     print(f"Skipping LGHD method as it's not available")
                     continue
-                
+                print(f"Creating {method}")
                 detector, matcher = create_detector_and_matcher(method)
                 results = process_image_pair_with_gt(sar_img, opt_img, detector, matcher, 
                                                   landmarks_mov, landmarks_fix, transform_gt, 

@@ -1,0 +1,6 @@
+numpy>=1.19.0
+opencv-python>=4.5.1
+scipy>=1.6.0
+matplotlib>=3.3.0
+# Optional dependencies
+# RIFT2==1.0.0  # Uncomment if you want to use RIFT method

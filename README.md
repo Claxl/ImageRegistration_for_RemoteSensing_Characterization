@@ -9,9 +9,9 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  AKAZE : Implemented
 -  RIFT : Implemented
 -  HOPC : More analysis needed
--  LGHD : To port in Python
+-  LGHD : More analysis needed
 -  OS-SIFT : To port in Python
--  ASIFT : To port in Python
+-  ASIFT : More analysis needed
 -   ~~POS-GIFT ~~ : Code obfuscated
 -   ~~CoFSM ~~ : Code obfuscated
 

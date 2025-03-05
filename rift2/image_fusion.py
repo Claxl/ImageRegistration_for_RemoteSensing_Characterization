@@ -69,14 +69,37 @@ def image_fusion(image_1: np.ndarray,
     fusion_image[only2] = out2[only2]
 
     fusion_image = np.clip(fusion_image, 0, 255).astype(np.uint8)
-
-    # Then the code tries to find bounding corners and crop
-    # We'll skip the detailed bounding box logic for brevity, or replicate similarly:
-    # left_up = final_transform @ [1, 1, 1]^T, etc. 
-    # ...
-
-    # For demonstration, just show or return fusion_image
-    # Also does mosaic_map for an alternate board pattern.
+    
+    # Create a binary mask of non-black pixels
+    non_black_mask = (fusion_image > 0)
+    if fusion_image.ndim == 3:
+        # For color images, consider a pixel non-black if any channel is > 0
+        non_black_mask = np.any(non_black_mask, axis=2)
+    
+    # Find the bounding box of non-black pixels
+    rows = np.any(non_black_mask, axis=1)
+    cols = np.any(non_black_mask, axis=0)
+    
+    if np.any(rows) and np.any(cols):  # Ensure there are non-black pixels
+        y_min, y_max = np.where(rows)[0][[0, -1]]
+        x_min, x_max = np.where(cols)[0][[0, -1]]
+        
+        # Add a small border (optional)
+        border = 10
+        y_min = max(0, y_min - border)
+        y_max = min(fusion_image.shape[0] - 1, y_max + border)
+        x_min = max(0, x_min - border)
+        x_max = min(fusion_image.shape[1] - 1, x_max + border)
+        
+        # Crop the fusion image to remove black borders
+        fusion_image = fusion_image[y_min:y_max+1, x_min:x_max+1]
+    
+    # Also create the mosaic image (keep the original version for this)
     _,_,mosaic_image = mosaic_map(out1, out2, 64)
-    # Return the fused result
+    
+    # Apply the same cropping to the mosaic image
+    if np.any(rows) and np.any(cols):
+        mosaic_image = mosaic_image[y_min:y_max+1, x_min:x_max+1]
+    
+    # Return the fused and mosaic images (now cropped)
     return fusion_image, mosaic_image

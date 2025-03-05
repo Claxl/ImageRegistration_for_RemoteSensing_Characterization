@@ -1,0 +1,6 @@
+METHOD COMPARISON
+===============
+
+Method     Total Pts  Repeatable GT Matches NM         NCM        RMSE Landmarks MI         Transform Error
+---------------------------------------------------------------------------------------------------------
+RIFT       3370       9          0          1685       98         0.4694     0.1209     338.1975       

@@ -1,0 +1,24 @@
+Metrics for RIFT
+================
+
+Number of detected points: 3370
+Number of repeatable points: 9
+Number of ground truth matches: 0
+Number of matches (NM): 1685
+Number of correct matches (NCM): 98
+Ratio NM/NCM: 17.1939
+Registration time: 73.1366 sec
+
+RMSE between landmarks: 0.4694
+Entropy of optical image: 6.3736
+Entropy of registered image: 6.8818
+Mutual Information: 0.1209
+
+Transform error on sample points: 338.1975
+Transformation matrix RMSE: 0.4694
+Transformation matrix Frobenius norm: 1.4083
+
+Transformation Matrix:
+0.997417 0.004327 -21.407467
+-0.004327 0.997417 2.322523
+0.000000 0.000000 1.000000

@@ -148,7 +148,8 @@ def process_image_pair_with_gt(sar_img, opt_img, detector, matcher, landmarks_mo
             'execution_time': results['reg_time'],
             'transformation_matrix': results['transformation_matrix'],
             'registered_img': results['registered_img'],
-            'matches_img': results['matches_img']
+            'matches_img': results['matches_img'],
+            'mosaic_img': results['mosaic_img']
         }
     
     # Standard OpenCV-based processing
@@ -192,10 +193,6 @@ def process_image_pair_with_gt(sar_img, opt_img, detector, matcher, landmarks_mo
             num_inliers = int(np.sum(mask))  # number of correct (inlier) matches
             
             height, width = opt_img.shape
-            registered_img = cv2.warpPerspective(sar_img, M, (width, height))
-            matches_img = cv2.drawMatches(sar_img, kp_sar, opt_img, kp_opt, good_matches, None, 
-                                          matchesMask=mask.tolist(), flags=2)
-            
             transformation_matrix = M
             
             # Calculate matrix RMSE if ground truth is available
@@ -213,6 +210,6 @@ def process_image_pair_with_gt(sar_img, opt_img, detector, matcher, landmarks_mo
         'matrix_rmse': matrix_rmse,
         'execution_time': execution_time,
         'transformation_matrix': transformation_matrix,
-        'registered_img': registered_img,
-        'matches_img': matches_img
+        'registered_img': None,
+        'matches_img': None
     }

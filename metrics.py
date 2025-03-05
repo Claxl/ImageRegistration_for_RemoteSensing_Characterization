@@ -7,27 +7,15 @@ Metrics for evaluating image registration performance.
 
 import numpy as np
 import cv2
-
 def compute_rmse_matrices(H_pred, H_gt):
     """
-    Computes the Root Mean Square Error between predicted and ground truth transformation matrices.
-    
-    Args:
-        H_pred (np.ndarray): Predicted homography matrix
-        H_gt (np.ndarray): Ground truth homography matrix
-        
-    Returns:
-        float: RMSE between the matrices
+    Computes the absolute RMSE between matrices without normalization
     """
     if H_pred is None or H_gt is None:
         return None
     
-    # Normalize matrices for fair comparison
-    H_pred_norm = H_pred / np.linalg.norm(H_pred)
-    H_gt_norm = H_gt / np.linalg.norm(H_gt)
-    
-    # Compute RMSE between matrix elements
-    rmse = np.sqrt(np.mean((H_pred_norm - H_gt_norm) ** 2))
+    # Compute RMSE directly between matrix elements
+    rmse = np.sqrt(np.mean((H_pred - H_gt) ** 2))
     
     return rmse
 

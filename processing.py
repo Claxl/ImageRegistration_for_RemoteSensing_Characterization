@@ -156,7 +156,7 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 print(f"Optical Keypoints: {results['num_keypoints_opt']}")
                 print(f"Number of matches: {results['num_matches']}")
                 print(f"Number of inliers: {results['num_inliers']}")
-                
+                print(results.keys())
                 if results['matrix_rmse'] is not None:
                     print(f"Matrix RMSE: {results['matrix_rmse']:.6f}")
                 else:
@@ -169,8 +169,7 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 
                 # Visualize results
                 if visualize:
-                    visualize_results(sar_img, opt_img, results, landmarks_mov, landmarks_fix, 
-                                     method, set_output_dir, transform_gt)
+                    visualize_results(sar_img, opt_img, results,method, set_output_dir)
             
             except Exception as e:
                 print(f"Error processing with {method} for set {set_name}: {e}")

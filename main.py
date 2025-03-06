@@ -38,7 +38,7 @@ import traceback
 from utils import get_image_files, extract_number, save_results
 from detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE
 from registration import process_image_pair
-from processing import process_with_ground_truth, process_from_folder
+from processing import  process_from_folder
 
 def main():
     """

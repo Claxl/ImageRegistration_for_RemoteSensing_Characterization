@@ -8,8 +8,8 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  ORB : Implemented
 -  AKAZE : Implemented
 -  RIFT : Implemented
--  HOPC : More analysis needed
--  LGHD : Implemented, but need more analysis
+-  ~~HOPC~~ : Not working properly
+-  LGHD : Implemented
 -  OS-SIFT : To port in Python
 -   ~~POS-GIFT ~~ : Code obfuscated
 -   ~~CoFSM ~~ : Code obfuscated

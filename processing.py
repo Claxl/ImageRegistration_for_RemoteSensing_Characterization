@@ -13,7 +13,7 @@ from registration import process_image_pair_with_gt
 from utils import load_ground_truth, find_matching_files_in_folder
 from reporting import save_metrics, compare_methods, create_summary_report
 from visualization import visualize_results
-
+'''
 def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, visualize=True):
     """
     Processes images using ground truth data from a .mat file.
@@ -84,7 +84,11 @@ def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, v
     # Create comparison of methods
     compare_methods(results_by_method, output_dir)
     
-    return results_by_method
+    return results_by_method'
+'''
+
+
+
 def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh=0.7, visualize=True):
     """
     Process images and ground truth files from a single folder.
@@ -169,7 +173,8 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
                 
                 # Save metrics
                 save_metrics(results, method, set_output_dir)
-                
+                sar_img = cv2.imread(file_set['sar_file'], cv2.IMREAD_GRAYSCALE)
+                opt_img = cv2.imread(file_set['opt_file'], cv2.IMREAD_GRAYSCALE)
                 # Visualize results
                 if visualize:
                     visualize_results(sar_img, opt_img, results, method, set_output_dir)

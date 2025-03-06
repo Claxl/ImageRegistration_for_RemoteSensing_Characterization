@@ -338,9 +338,7 @@ def process_rift(sar_img, opt_img):
         'good_matches': consensus_pts1
     }
 
-def process_lghd(sar_img, opt_img, patch_size=64, max_keypoints=500, 
-                min_rgb_contrast=0.1, min_lwir_contrast=0.05,
-                ratio_threshold=0.8, ransac_threshold=3.0):
+def process_lghd(sar_img_path, opt_img_path):
     """
     Process a pair of images using the LGHD algorithm.
     This function adapts the original ImageRegistration class to match the
@@ -361,16 +359,18 @@ def process_lghd(sar_img, opt_img, patch_size=64, max_keypoints=500,
     """
 
     start_time = time.time()
-    
+    opt_img = cv2.imread(opt_img_path)
+    sar_img = cv2.imread(sar_img_path, cv2.IMREAD_GRAYSCALE)
     # Create LGHD image registration object
     # This uses the original ImageRegistration class without modification
+    # Create image registration object
     reg = LGHDRegistration(
-        patch_size=patch_size,
-        max_keypoints=max_keypoints,
-        min_rgb_contrast=min_rgb_contrast,
-        min_lwir_contrast=min_lwir_contrast,
-        ratio_threshold=ratio_threshold,
-        ransac_threshold=ransac_threshold
+        patch_size=96,
+        max_keypoints=5000,
+        min_rgb_contrast=0.1,
+        min_lwir_contrast=0.05,
+        ratio_threshold=1,
+        ransac_threshold=3
     )
     
     # Register the images using the original method
@@ -402,8 +402,9 @@ def process_lghd(sar_img, opt_img, patch_size=64, max_keypoints=500,
     rmse = 0.0
     if NCM > 0:
         # Get inlier points
-        inlier_src = src_pts[inlier_mask]
-        inlier_dst = dst_pts[inlier_mask]
+        inlier_mask_corretto = inlier_mask[:len(src_pts)]
+        inlier_src = src_pts[inlier_mask_corretto]
+        inlier_dst = dst_pts[inlier_mask_corretto]
         
         # Calculate RMSE
         ones = np.ones((len(inlier_src), 1))
@@ -416,30 +417,7 @@ def process_lghd(sar_img, opt_img, patch_size=64, max_keypoints=500,
     # Create registered image (warp optical to SAR space)
     h, w = sar_img.shape[:2]
     registered_img = reg.warp_image(opt_img, H, (h, w))
-    
-    import matplotlib.pyplot as plt
 
-    # Create visualization using the original method's functionality
-    if inlier_mask is not None:
-        # Use the visualization methods from the original class
-        # but save to memory instead of showing/saving
-        match_fig = plt.figure(figsize=(12, 6))
-        reg.visualize_matches(opt_img, sar_img, src_pts, dst_pts, inlier_mask)
-        
-        # Convert matplotlib figure to OpenCV image
-        match_fig.canvas.draw()
-        matches_img = np.frombuffer(match_fig.canvas.tostring_rgb(), dtype=np.uint8)
-        matches_img = matches_img.reshape(match_fig.canvas.get_width_height()[::-1] + (3,))
-        matches_img = cv2.cvtColor(matches_img, cv2.COLOR_RGB2BGR)
-        plt.close(match_fig)
-        
-        # Also create mosaic and fusion images
-        _, overlay, checkerboard = reg.visualize_registration(opt_img, sar_img, H)
-    else:
-        # Create empty images if visualization fails
-        matches_img = np.zeros((100, 100, 3), dtype=np.uint8)
-        overlay = np.zeros_like(registered_img)
-        checkerboard = np.zeros_like(registered_img)
     
     # Calculate statistics
     reg_time = time.time() - start_time
@@ -454,9 +432,9 @@ def process_lghd(sar_img, opt_img, patch_size=64, max_keypoints=500,
         'rmse': rmse,
         'transformation_matrix': H,
         'registered_img': registered_img,
-        'mosaic_img': checkerboard,
-        'matches_img': matches_img,
+        'mosaic_img': None,
+        'matches_img': None,
         'keypoints_sar': dst_pts,
         'keypoints_opt': src_pts,
-        'good_matches': src_pts[inlier_mask] if inlier_mask is not None else None
+        'good_matches': src_pts[inlier_mask_corretto] if inlier_mask_corretto is not None else None
     }

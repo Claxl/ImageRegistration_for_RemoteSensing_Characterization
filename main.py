@@ -78,7 +78,7 @@ def main():
         print(f"Processing files from folder: {args.data_folder}")
         process_from_folder(args.data_folder, methods, args.output_dir, 
                            args.tag, args.ratio_thresh, args.visualize)
-    
+    '''
     # Process with specific ground truth file if provided
     elif args.ground_truth:
         print(f"Using ground truth data from {args.ground_truth}")
@@ -219,7 +219,7 @@ def main():
     else:
         print("Either --data_folder, --ground_truth, or both --sar_folder and --opt_folder must be provided.")
         parser.print_help()
-
+    '''
 if __name__ == "__main__":
     """
     Example usage:

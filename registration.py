@@ -11,7 +11,7 @@ import time
 from metrics import compute_rmse_matrices, compute_rmse_points
 from detectors import process_rift, process_lghd
 from utils import make_match_image
-def process_image_pair_with_gt(sar_img, opt_img, detector, matcher, landmarks_mov, landmarks_fix, transform_gt=None, ratio_thresh=0.7, method=""):
+def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher, landmarks_mov, landmarks_fix, transform_gt=None, ratio_thresh=0.7, method=""):
     """
     Processes a pair of images with ground truth landmarks and optional transformation matrix.
     
@@ -30,7 +30,12 @@ def process_image_pair_with_gt(sar_img, opt_img, detector, matcher, landmarks_mo
         dict: Dictionary containing registration results and evaluation metrics
     """
     start_reg_time = time.time()
-    
+            # Load images
+    sar_img = cv2.imread(sar_img_path, cv2.IMREAD_GRAYSCALE)
+    opt_img = cv2.imread(opt_img_path, cv2.IMREAD_GRAYSCALE)
+        
+    if sar_img is None or opt_img is None:
+            print(f"Error loading images: {sar_img_path}, {opt_img_path}")
     # Check if using RIFT method (which has its own pipeline)
     if detector is None and matcher is None and method.upper() == "RIFT":
         # Process using RIFT
@@ -64,7 +69,7 @@ def process_image_pair_with_gt(sar_img, opt_img, detector, matcher, landmarks_mo
     # Check if using LGHD method (which has its own pipeline)
     elif detector is None and matcher is None and method.upper() == "LGHD":
         # Process using LGHD
-        results = process_lghd(sar_img, opt_img)
+        results = process_lghd(sar_img_path, opt_img_path)
         
         # Calculate matrix RMSE if ground truth is available
         matrix_rmse = None

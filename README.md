@@ -10,7 +10,7 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  RIFT : Implemented
 -  ~~HOPC~~ : Not working properly
 -  LGHD : Implemented
--  OS-SIFT : To port in Python
+-  OS-SIFT : Need Refiniment (optical image no keypoint)
 -   ~~POS-GIFT ~~ : Code obfuscated
 -   ~~CoFSM ~~ : Code obfuscated
 

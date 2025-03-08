@@ -58,6 +58,8 @@ def create_detector_and_matcher(method):
         search_params = dict(checks=50)
         matcher = cv2.FlannBasedMatcher(index_params, search_params)
     elif method.upper() == "ORB":
+        cv2.setUseOptimized(False)
+        cv2.setNumThreads(1)  # Evita il multi-threading su FPGA
         try:
             print(f"Creating {method}")
             detector = cv2.ORB_create()

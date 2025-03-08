@@ -8,11 +8,11 @@ High-level processing functions for handling different registration scenarios.
 import os
 import cv2
 import numpy as np
-from detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE
-from registration import process_image_pair_with_gt
-from utils import load_ground_truth, find_matching_files_in_folder
-from reporting import save_metrics, compare_methods, create_summary_report
-from visualization import visualize_results
+from .detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE
+from .registration import process_image_pair_with_gt
+from .utils import load_ground_truth, find_matching_files_in_folder
+from .reporting import save_metrics, compare_methods, create_summary_report
+from .visualization import visualize_results
 '''
 def process_with_ground_truth(mat_file, methods, output_dir, ratio_thresh=0.7, visualize=True):
     """

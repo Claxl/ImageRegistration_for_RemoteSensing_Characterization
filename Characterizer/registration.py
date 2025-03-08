@@ -8,9 +8,9 @@ Core image registration functions.
 import cv2
 import numpy as np
 import time
-from metrics import compute_rmse_matrices, compute_rmse_points
-from detectors import process_rift, process_lghd,process_sarsift
-from utils import make_match_image
+from .metrics import compute_rmse_matrices, compute_rmse_points
+from .detectors import process_rift, process_lghd,process_sarsift
+from .utils import make_match_image
 def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher, landmarks_mov, landmarks_fix, transform_gt=None, ratio_thresh=0.7, method=""):
     """
     Processes a pair of images with ground truth landmarks and optional transformation matrix.

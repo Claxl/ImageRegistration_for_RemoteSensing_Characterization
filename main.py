@@ -35,10 +35,10 @@ import cv2
 import numpy as np
 import traceback
 
-from utils import get_image_files, extract_number, save_results
-from detectors import create_detector_and_matcher, RIFT_AVAILABLE, SARSIFT_AVAILABLE, LGHD_AVAILABLE
-from registration import process_image_pair
-from processing import process_from_folder
+from Characterizer.utils import get_image_files, extract_number, save_results
+from Characterizer.detectors import create_detector_and_matcher, RIFT_AVAILABLE, SARSIFT_AVAILABLE, LGHD_AVAILABLE
+from Characterizer.registration import process_image_pair
+from Characterizer.processing import process_from_folder
 
 def main():
     """

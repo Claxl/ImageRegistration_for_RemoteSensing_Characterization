@@ -515,7 +515,7 @@ def process_sarsift(sar_img, opt_img, feature_density=0.008):
     import time
     import numpy as np
     import cv2
-    from utils import make_match_image
+    from .utils import make_match_image
     from SAR_Sift.matching import match_descriptors, match, DistanceCriterion
     
     start_time = time.time()

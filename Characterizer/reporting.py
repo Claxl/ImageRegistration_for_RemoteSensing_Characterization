@@ -6,7 +6,7 @@ Functions for reporting and summarizing registration results.
 """
 
 import os
-from visualization import create_method_comparison_chart
+from .visualization import create_method_comparison_chart
 import numpy as np
 def save_metrics(results, method, output_dir):
     """

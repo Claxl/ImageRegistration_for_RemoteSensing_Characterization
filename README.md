@@ -11,7 +11,7 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  ~~HOPC~~ : Not working properly
 -  LGHD : Implemented
 -  OS-SIFT : Need Refiniment (optical image no keypoint)
--  SAR-Sift : Porting
+-  SAR-Sift : Implemented
 -   ~~POS-GIFT ~~ : Code obfuscated
 -   ~~CoFSM ~~ : Code obfuscated
 

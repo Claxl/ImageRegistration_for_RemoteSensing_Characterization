@@ -49,6 +49,8 @@ def create_detector_and_matcher(method):
         search_params = dict(checks=50)
         matcher = cv2.FlannBasedMatcher(index_params, search_params)
     elif method.upper() == "SURF":
+        cv2.setUseOptimized(False)  # Evita problemi di accesso a memoria su FPGA
+        cv2.setNumThreads(1)  # Disabilita il multi-threading su FPGA
         try:
             detector = cv2.xfeatures2d.SURF_create()
         except AttributeError:

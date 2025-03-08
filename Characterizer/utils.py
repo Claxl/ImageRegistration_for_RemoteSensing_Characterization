@@ -3,33 +3,68 @@
 
 """
 Utility functions for the image registration framework.
+
+This module provides utility functions for:
+- File handling and searching
+- Image pair matching
+- Ground truth data loading
+- Result visualization
 """
 
 import os
 import re
 import glob
+import logging
 import numpy as np
 import cv2
+from pathlib import Path
 
-def get_image_files(folder, extensions=['*.jpg', '*.png', '*.jpeg']):
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+def get_image_files(folder, extensions=None):
     """
-    Returns a sorted list of image file paths from the given folder.
+    Get a sorted list of image file paths from a folder.
     
     Args:
         folder (str): Path to the folder containing images
-        extensions (list): List of file extensions to search for
-        
+        extensions (list, optional): List of file extensions to search for.
+            Defaults to ['.jpg', '.png', '.jpeg', '.tif', '.tiff']
+            
     Returns:
         list: Sorted list of image file paths
     """
-    files = []
+    if extensions is None:
+        extensions = ['.jpg', '.png', '.jpeg', '.tif', '.tiff']
+    
+    folder_path = Path(folder)
+    if not folder_path.exists():
+        logger.warning(f"Folder not found: {folder}")
+        return []
+    
+    # Find all files with specified extensions
+    image_files = []
     for ext in extensions:
-        files.extend(glob.glob(os.path.join(folder, ext)))
-    return sorted(files)
+        # Remove leading dot if present
+        if ext.startswith('.'):
+            pattern = f"*{ext}"
+        else:
+            pattern = f"*.{ext}"
+            
+        image_files.extend(folder_path.glob(pattern))
+    
+    # Sort files by name
+    return sorted(image_files)
+
 
 def extract_number(filename):
     """
-    Extracts the identifier part from filenames to match files across directories.
+    Extract the identifier part from filenames to match files across directories.
     
     This function tries different patterns to extract identifiers:
     1. Pattern like 'ROIs1970_fall_s1_8_p99.png' -> extracts '8_p99'
@@ -42,57 +77,60 @@ def extract_number(filename):
     Returns:
         str or None: The extracted identifier, or None if no match is found
     """
-    # For filenames like 'ROIs1970_fall_s1_8_p99.png'
-    match = re.search(r'_(\d+_p\d+)', filename)
-    if match:
-        return match.group(1)
+    if not isinstance(filename, str):
+        filename = str(filename)
     
-    # Fallback to extracting just the number before '_p'
-    match = re.search(r'_(\d+)_p', filename)
-    if match:
-        return match.group(1)
+    # Try different pattern matching strategies
+    for pattern, group_idx in [
+        (r'_(\d+_p\d+)', 1),  # 'ROIs1970_fall_s1_8_p99.png' -> '8_p99'
+        (r'_(\d+)_p', 1),     # Extract number before '_p'
+        (r'(\d+)', 0)         # Any number in the filename
+    ]:
+        match = re.search(pattern, filename)
+        if match:
+            return match.group(group_idx)
     
-    # Final fallback to any number
-    match = re.search(r'\d+', filename)
-    if match:
-        return match.group()
-    
+    logger.debug(f"No identifier found in filename: {filename}")
     return None
+
 
 def find_matching_files_in_folder(folder_path, tag=None):
     """
-    Finds matching files in a folder with the following naming pattern:
+    Find matching files in a folder with the following naming pattern:
     - TAGN.mat: ground truth file (e.g., SO1.mat)
     - TAGNa.png: SAR image (e.g., SO1a.png)
     - TAGNb.png: optical image (e.g., SO1b.png)
     
     Args:
         folder_path (str): Path to the folder containing the files
-        tag (str, optional): Specific tag/prefix to search for (e.g., 'SO', 'CS'), if None, searches all tags
-        
+        tag (str, optional): Specific tag/prefix to search for (e.g., 'SO', 'CS')
+            If None, searches all standard tags
+            
     Returns:
         list: List of dictionaries containing file information for each matching set
     """
-    if not os.path.exists(folder_path):
-        print(f"The folder {folder_path} does not exist.")
+    folder = Path(folder_path)
+    if not folder.exists():
+        logger.error(f"The folder {folder_path} does not exist.")
         return []
     
-    # List of available tags
+    # Standard tags used in the dataset
     available_tags = ["CS", "DN", "DO", "IO", "MO", "OO", "SO"]
     
-    # Use only the specified tag if provided
+    # Use only the specified tag if provided and valid
     tags_to_use = [tag] if tag and tag in available_tags else available_tags
     
     # Get all files in the folder
-    all_files = os.listdir(folder_path)
+    all_files = list(folder.iterdir())
+    all_filenames = [f.name for f in all_files]
     
     matching_sets = []
     
-    # For each potential tag
+    # Process each potential tag
     for current_tag in tags_to_use:
-        # Find .mat files with the current tag
+        # Find .mat files with the current tag using regex pattern
         mat_pattern = re.compile(f"^{current_tag}(\\d+)\.mat$")
-        mat_files = [f for f in all_files if mat_pattern.match(f)]
+        mat_files = [f for f in all_filenames if mat_pattern.match(f)]
         
         for mat_file in mat_files:
             # Extract number from .mat filename
@@ -106,41 +144,53 @@ def find_matching_files_in_folder(folder_path, tag=None):
             sar_pattern = f"{current_tag}{number}a"  # e.g., SO1a
             opt_pattern = f"{current_tag}{number}b"  # e.g., SO1b
             
-            # Find SAR file
-            sar_files = [f for f in all_files if f.startswith(sar_pattern) and 
-                         (f.endswith(".png") or f.endswith(".jpg") or f.endswith(".jpeg"))]
-            
-            # Find optical file
-            opt_files = [f for f in all_files if f.startswith(opt_pattern) and 
-                         (f.endswith(".png") or f.endswith(".jpg") or f.endswith(".jpeg"))]
+            # Find matching SAR and optical files
+            sar_files = _find_matching_image_files(all_filenames, sar_pattern)
+            opt_files = _find_matching_image_files(all_filenames, opt_pattern)
             
             if sar_files and opt_files:
-                sar_file = sar_files[0]
-                opt_file = opt_files[0]
+                _log_matching_set(current_tag, number, mat_file, sar_files[0], opt_files[0])
                 
                 matching_sets.append({
                     'tag': current_tag,
                     'number': number,
-                    'gt_file': os.path.join(folder_path, mat_file),
-                    'sar_file': os.path.join(folder_path, sar_file),
-                    'opt_file': os.path.join(folder_path, opt_file)
+                    'gt_file': str(folder / mat_file),
+                    'sar_file': str(folder / sar_files[0]),
+                    'opt_file': str(folder / opt_files[0])
                 })
-                
-                print(f"Set found: {current_tag}{number}")
-                print(f"  Ground Truth: {mat_file}")
-                print(f"  SAR: {sar_file}")
-                print(f"  Optical: {opt_file}")
     
     if not matching_sets:
-        print(f"No matching sets found in folder {folder_path}")
-        if tag:
-            print(f"for tag {tag}")
+        _log_no_matches(folder_path, tag)
     
     return matching_sets
 
+
+def _find_matching_image_files(all_filenames, pattern):
+    """Find image files matching a pattern."""
+    return [f for f in all_filenames if 
+            f.startswith(pattern) and 
+            any(f.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".tif", ".tiff"])]
+
+
+def _log_matching_set(tag, number, mat_file, sar_file, opt_file):
+    """Log information about a matching set of files."""
+    logger.info(f"Set found: {tag}{number}")
+    logger.info(f"  Ground Truth: {mat_file}")
+    logger.info(f"  SAR: {sar_file}")
+    logger.info(f"  Optical: {opt_file}")
+
+
+def _log_no_matches(folder_path, tag):
+    """Log a message when no matching sets are found."""
+    msg = f"No matching sets found in folder {folder_path}"
+    if tag:
+        msg += f" for tag {tag}"
+    logger.warning(msg)
+
+
 def make_match_image(im1, im2, pts1, pts2, color=(0, 255, 255), radius=5, thickness=2):
     """
-    Creates a visualization image showing matches between two images.
+    Create a visualization image showing matches between two images.
     
     Args:
         im1 (np.ndarray): First image (BGR or grayscale)
@@ -154,40 +204,70 @@ def make_match_image(im1, im2, pts1, pts2, color=(0, 255, 255), radius=5, thickn
     Returns:
         np.ndarray: Visualization image with both images side-by-side and matches drawn
     """
+    # Ensure inputs are valid
+    if im1 is None or im2 is None or pts1 is None or pts2 is None:
+        logger.error("Invalid inputs to make_match_image")
+        return None
+    
+    if len(pts1) != len(pts2):
+        logger.error(f"Point count mismatch: {len(pts1)} vs {len(pts2)}")
+        return None
+    
     # Ensure both images are in BGR format for visualization
-    if len(im1.shape) == 2:
-        im1 = cv2.cvtColor(im1, cv2.COLOR_GRAY2BGR)
-    if len(im2.shape) == 2:
-        im2 = cv2.cvtColor(im2, cv2.COLOR_GRAY2BGR)
+    im1_bgr = _ensure_bgr(im1)
+    im2_bgr = _ensure_bgr(im2)
 
     # Get dimensions
-    h1, w1 = im1.shape[:2]
-    h2, w2 = im2.shape[:2]
+    h1, w1 = im1_bgr.shape[:2]
+    h2, w2 = im2_bgr.shape[:2]
 
     # Create canvas for side-by-side display
-    match_vis = np.zeros((max(h1, h2), w1 + w2, 3), dtype=np.uint8)
+    height = max(h1, h2)
+    width = w1 + w2
+    match_vis = np.zeros((height, width, 3), dtype=np.uint8)
 
     # Place images on canvas
-    match_vis[:h1, :w1] = im1
-    match_vis[:h2, w1:w1 + w2] = im2
+    match_vis[:h1, :w1] = im1_bgr
+    match_vis[:h2, w1:w1 + w2] = im2_bgr
 
     # Draw each match
     for (x1, y1), (x2, y2) in zip(pts1, pts2):
         # Adjust x2 because the second image is shifted to the right by w1
         x2_shifted = x2 + w1
 
-        # Draw circles at the matched points
-        cv2.circle(match_vis, (int(x1), int(y1)), radius, color, thickness)
-        cv2.circle(match_vis, (int(x2_shifted), int(y2)), radius, color, thickness)
+        try:
+            # Draw circles at the matched points
+            cv2.circle(match_vis, (int(x1), int(y1)), radius, color, thickness)
+            cv2.circle(match_vis, (int(x2_shifted), int(y2)), radius, color, thickness)
 
-        # Draw a line between them
-        cv2.line(match_vis, (int(x1), int(y1)), (int(x2_shifted), int(y2)), color, thickness)
+            # Draw a line between them
+            cv2.line(match_vis, (int(x1), int(y1)), (int(x2_shifted), int(y2)), color, thickness)
+        except Exception as e:
+            logger.warning(f"Error drawing match from ({x1}, {y1}) to ({x2}, {y2}): {e}")
+            continue
 
     return match_vis
 
+
+def _ensure_bgr(img):
+    """Ensure image is in BGR format."""
+    if img is None:
+        return None
+        
+    if len(img.shape) == 2:
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif img.shape[2] == 3:
+        return img.copy()
+    elif img.shape[2] == 4:  # RGBA
+        return cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+    else:
+        logger.warning(f"Unexpected image format with shape {img.shape}")
+        return img
+
+
 def load_ground_truth(mat_file_path):
     """
-    Loads ground truth data from a .mat file.
+    Load ground truth data from a .mat file.
     
     Args:
         mat_file_path (str): Path to the .mat file containing ground truth data
@@ -199,45 +279,64 @@ def load_ground_truth(mat_file_path):
             - landmarks_fix: Landmark points for optical image
             - landmarks_mov: Landmark points for SAR image
             - T: Ground truth transformation matrix (if available)
+            
+    Raises:
+        IOError: If there's an error loading the ground truth data
     """
     try:
         import scipy.io
         
+        logger.info(f"Loading ground truth from {mat_file_path}")
         mat_data = scipy.io.loadmat(mat_file_path)
-        I_fix = mat_data['I_fix']
-        I_move = mat_data['I_move']
-        landmarks = mat_data['Landmarks']
+        
+        # Extract images
+        I_fix = _extract_and_normalize_image(mat_data, 'I_fix')
+        I_move = _extract_and_normalize_image(mat_data, 'I_move')
         
         # Extract landmark points
+        landmarks = mat_data['Landmarks']
         landmarks_fix = landmarks[0][0][0]
         landmarks_mov = landmarks[0][0][1]
         
+        logger.info(f"Loaded {len(landmarks_fix)} landmark pairs")
+        
         # Extract transformation matrix if available
-        T = None
-        if 'T' in mat_data:
-            T = mat_data['T']
-            print(f"Ground truth transformation matrix extracted: shape {T.shape}")
-        else:
-            print("Warning: Ground truth transformation matrix 'T' not found in the .mat file")
-        
-        # Ensure images are grayscale
-        if len(I_fix.shape) > 2:
-            I_fix = cv2.cvtColor(I_fix.astype(np.uint8), cv2.COLOR_RGB2GRAY)
-        else:
-            I_fix = I_fix.astype(np.uint8)
-        
-        if len(I_move.shape) > 2:
-            I_move = cv2.cvtColor(I_move.astype(np.uint8), cv2.COLOR_RGB2GRAY)
-        else:
-            I_move = I_move.astype(np.uint8)
+        T = _extract_transformation_matrix(mat_data)
         
         return I_fix, I_move, landmarks_fix, landmarks_mov, T
+        
     except Exception as e:
+        logger.error(f"Error loading ground truth data: {e}")
         raise IOError(f"Error loading ground truth data: {e}")
+
+
+def _extract_and_normalize_image(mat_data, image_key):
+    """Extract and normalize an image from the MAT data."""
+    img = mat_data[image_key]
+    
+    # Ensure image is grayscale
+    if len(img.shape) > 2:
+        img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2GRAY)
+    else:
+        img = img.astype(np.uint8)
+        
+    return img
+
+
+def _extract_transformation_matrix(mat_data):
+    """Extract transformation matrix from MAT data if available."""
+    if 'T' in mat_data:
+        T = mat_data['T']
+        logger.info(f"Ground truth transformation matrix extracted: shape {T.shape}")
+        return T
+    else:
+        logger.warning("Ground truth transformation matrix 'T' not found in the .mat file")
+        return None
+
 
 def save_results(sar_path, opt_path, registered_img, matches_img, method, output_dir="output"):
     """
-    Saves the registered image and matches visualization to the output directory.
+    Save the registered image and matches visualization to the output directory.
     
     Args:
         sar_path (str): Path to the SAR image
@@ -247,16 +346,28 @@ def save_results(sar_path, opt_path, registered_img, matches_img, method, output
         method (str): Method name used for registration (e.g., 'SIFT', 'RIFT')
         output_dir (str): Output directory for saving results
     """
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
     
-    base_sar = os.path.splitext(os.path.basename(sar_path))[0]
-    base_opt = os.path.splitext(os.path.basename(opt_path))[0]
+    # Extract base filenames
+    base_sar = Path(sar_path).stem
+    base_opt = Path(opt_path).stem
     
-    reg_filename = os.path.join(output_dir, f"{method}_registered_{base_sar}_to_{base_opt}.png")
-    matches_filename = os.path.join(output_dir, f"{method}_matches_{base_sar}_to_{base_opt}.png")
+    # Create output filenames
+    reg_filename = output_path / f"{method}_registered_{base_sar}_to_{base_opt}.png"
+    matches_filename = output_path / f"{method}_matches_{base_sar}_to_{base_opt}.png"
     
+    # Save images if available
     if registered_img is not None:
-        cv2.imwrite(reg_filename, registered_img)
+        try:
+            cv2.imwrite(str(reg_filename), registered_img)
+            logger.info(f"Saved registered image to {reg_filename}")
+        except Exception as e:
+            logger.error(f"Error saving registered image: {e}")
+    
     if matches_img is not None:
-        cv2.imwrite(matches_filename, matches_img)
+        try:
+            cv2.imwrite(str(matches_filename), matches_img)
+            logger.info(f"Saved matches image to {matches_filename}")
+        except Exception as e:
+            logger.error(f"Error saving matches image: {e}")

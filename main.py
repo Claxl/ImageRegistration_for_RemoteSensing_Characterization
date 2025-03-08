@@ -36,9 +36,9 @@ import numpy as np
 import traceback
 
 from utils import get_image_files, extract_number, save_results
-from detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE
+from detectors import create_detector_and_matcher, RIFT_AVAILABLE, SARSIFT_AVAILABLE, LGHD_AVAILABLE
 from registration import process_image_pair
-from processing import  process_from_folder
+from processing import process_from_folder
 
 def main():
     """
@@ -73,6 +73,11 @@ def main():
     if "LGHD" in methods and not LGHD_AVAILABLE:
         print("Warning: LGHD method was requested but is not available. It will be skipped.")
         methods = [m for m in methods if m != "LGHD"]
+
+        # Check if SAR-SIFT is requested but not available
+    if "SARSIFT" in methods and not SARSIFT_AVAILABLE:
+        print("Warning: SAR-SIFT method was requested but is not available. It will be skipped.")
+        methods = [m for m in methods if m != "SARSIFT"]
     # Process from a single folder containing both images and ground truth
     if args.data_folder:
         print(f"Processing files from folder: {args.data_folder}")

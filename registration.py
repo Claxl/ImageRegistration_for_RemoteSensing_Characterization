@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import time
 from metrics import compute_rmse_matrices, compute_rmse_points
-from detectors import process_rift, process_lghd
+from detectors import process_rift, process_lghd,process_sarsift
 from utils import make_match_image
 def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher, landmarks_mov, landmarks_fix, transform_gt=None, ratio_thresh=0.7, method=""):
     """
@@ -88,6 +88,35 @@ def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher, la
             'registered_img': results['registered_img'],
             'matches_img': results['matches_img'],
             'mosaic_img': results['mosaic_img'] if 'mosaic_img' in results else None
+        }
+    # Check if we're using SAR-SIFT
+    if hasattr(detector, 'sar_sift'):
+        # Process using SAR-SIFT
+        results = process_sarsift(sar_img, opt_img)
+        
+        # Calculate additional metrics
+        num_keypoints_sar = len(results['keypoints_sar'])
+        num_keypoints_opt = len(results['keypoints_opt'])
+        num_matches = results['NM']
+        num_inliers = results['NCM']
+        
+        # Calculate matrix RMSE if ground truth is available
+        matrix_rmse = None
+        if transform_gt is not None and results['transformation_matrix'] is not None:
+            matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
+        
+        # Return results with the metrics you specifically want
+        return {
+            'num_keypoints_sar': num_keypoints_sar,
+            'num_keypoints_opt': num_keypoints_opt,
+            'num_matches': num_matches,
+            'num_inliers': num_inliers,
+            'matrix_rmse': matrix_rmse,
+            'execution_time': results['reg_time'],
+            'transformation_matrix': results['transformation_matrix'],
+            'registered_img': results['registered_img'],
+            'matches_img': results['matches_img'],
+            'mosaic_img': results['mosaic_img']
         }
     
     # Standard OpenCV-based processing
@@ -213,7 +242,21 @@ def process_image_pair(sar_img_path, opt_img_path, detector, matcher, ratio_thre
         
         return (num_keypoints_sar, num_keypoints_opt, num_matches, num_inliers, 
                 results['transformation_matrix'], execution_time, results['registered_img'], results['matches_img'])
-    
+    if hasattr(detector, 'sar_sift'):
+        # Process using SAR-SIFT
+        print("Using SAR-SIFT algorithm for processing...")
+        
+        results = process_sarsift(sar_img, opt_img)
+        
+        # Extract required metrics
+        num_keypoints_sar = len(results['keypoints_sar'])
+        num_keypoints_opt = len(results['keypoints_opt'])
+        num_matches = results['NM'] 
+        num_inliers = results['NCM']
+        execution_time = results['reg_time']
+        
+        return (num_keypoints_sar, num_keypoints_opt, num_matches, num_inliers, 
+                results['rmse'], execution_time, results['registered_img'], results['matches_img'])
     # Standard OpenCV-based processing
     # Extract keypoints and descriptors
     print("Using OpenCV-based algorithm for processing...")

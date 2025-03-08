@@ -27,6 +27,52 @@ try:
 except ImportError as e:
     LGHD_AVAILABLE = False
     print(f"LGHD modules not available. LGHD method will be skipped if requested. Exception: {e}")
+
+# Check if SAR-SIFT is available
+try:
+    from SAR_Sift.sar_sift import SarSift, Keypoint as SARKeypoint
+    SARSIFT_AVAILABLE = True
+    print("SAR-SIFT module is available and will be used if selected.")
+except ImportError:
+    SARSIFT_AVAILABLE = False
+    print("SAR-SIFT module not available. SAR-SIFT method will be skipped if requested.")
+
+
+class SARSIFTDetector:
+    """
+    Wrapper class for SAR-SIFT to match OpenCV detector interface.
+    This allows the SAR-SIFT detector to be used with the existing framework.
+    """
+    def __init__(self, nFeatures=5000, Mmax=8, sigma=2.0, ratio=2.0**(1.0/3.0), threshold=0.8/5, d=0.04):
+        """
+        Initialize the SAR-SIFT detector with default parameters.
+        
+        Args:
+            nFeatures (int): Maximum number of features to detect
+            Mmax (int): Number of scale layers
+            sigma (float): Initial scale
+            ratio (float): Scale factor between layers
+            threshold (float): Harris function response threshold
+            d (float): Parameter for sar_harris function
+        """
+        self.sar_sift = SarSift(nFeatures, Mmax, sigma, ratio, threshold, d)
+        
+    def _convert_to_cv_keypoints(self, sar_keypoints):
+        """Convert SAR-SIFT keypoints to OpenCV keypoints."""
+        cv_keypoints = []
+        for kp in sar_keypoints:
+            cv_kp = cv2.KeyPoint(
+                x=kp.pt[0], 
+                y=kp.pt[1],
+                size=kp.size,
+                angle=kp.angle,
+                response=kp.response,
+                octave=kp.octave
+            )
+            cv_keypoints.append(cv_kp)
+        return cv_keypoints
+
+
 def create_detector_and_matcher(method):
     """
     Given a method name ('SIFT', 'SURF', 'ORB', 'AKAZE', or 'RIFT'), returns a tuple (detector, matcher)
@@ -89,6 +135,16 @@ def create_detector_and_matcher(method):
         # The actual LGHD processing will be handled separately
         detector = None
         matcher = None
+    elif method.upper() == "SARSIFT":
+        if not SARSIFT_AVAILABLE:
+            raise ValueError("SAR-SIFT method is not available. Please make sure sar_sift.py is in your PYTHONPATH.")
+        # For SAR-SIFT, we'll use a special detector wrapper and a cosine similarity matcher
+        detector = SARSIFTDetector()
+        # FLANN_INDEX_KDTREE is appropriate as SAR-SIFT uses float descriptors
+        FLANN_INDEX_KDTREE = 1
+        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+        search_params = dict(checks=50)
+        matcher = cv2.FlannBasedMatcher(index_params, search_params)
     else:
         raise ValueError(f"Method {method} not recognized.")
     return detector, matcher
@@ -441,4 +497,149 @@ def process_lghd(sar_img_path, opt_img_path):
         'keypoints_sar': dst_pts,
         'keypoints_opt': src_pts,
         'good_matches': src_pts[inlier_mask_corretto] if inlier_mask_corretto is not None else None
+    }
+
+
+def process_sarsift(sar_img, opt_img, feature_density=0.008):
+    """
+    Process a pair of images using the SAR-SIFT algorithm.
+    
+    Args:
+        sar_img (np.ndarray): SAR image
+        opt_img (np.ndarray): Optical image
+        feature_density (float): Feature density per pixel
+        
+    Returns:
+        dict: Dictionary containing processing results
+    """
+    import time
+    import numpy as np
+    import cv2
+    from utils import make_match_image
+    from SAR_Sift.matching import match_descriptors, match, DistanceCriterion
+    
+    start_time = time.time()
+    
+    # Calculate feature count based on image size
+    num_pixels_1 = sar_img.shape[0] * sar_img.shape[1]
+    num_pixels_2 = opt_img.shape[0] * opt_img.shape[1]
+    nFeatures_1 = int(round(num_pixels_1 * feature_density))
+    nFeatures_2 = int(round(num_pixels_2 * feature_density))
+    
+    # Initialize SAR-SIFT detectors
+    sar_sift_1 = SarSift(nFeatures_1, 8, 2, 2**(1.0/3.0), 0.8/5, 0.04)
+    sar_sift_2 = SarSift(nFeatures_2, 8, 2, 2**(1.0/3.0), 0.8/5, 0.04)
+    
+    # Detect keypoints in SAR image
+    print("Detecting features in SAR image...")
+    keypoints_1, sar_harris_fun_1, amplit_1, orient_1 = sar_sift_1.detect_keys(sar_img)
+    print(f"Number of features detected in SAR image: {len(keypoints_1)}")
+    
+    # Compute descriptors for SAR image
+    print("Computing descriptors for SAR image...")
+    descriptors_1 = sar_sift_1.compute_descriptors(keypoints_1, amplit_1, orient_1)
+    
+    # Detect keypoints in optical image
+    print("Detecting features in optical image...")
+    keypoints_2, sar_harris_fun_2, amplit_2, orient_2 = sar_sift_2.detect_keys(opt_img)
+    print(f"Number of features detected in optical image: {len(keypoints_2)}")
+    
+    # Compute descriptors for optical image
+    print("Computing descriptors for optical image...")
+    descriptors_2 = sar_sift_2.compute_descriptors(keypoints_2, amplit_2, orient_2)
+    
+    # Match descriptors
+    print("Matching descriptors...")
+    dmatchs = match_descriptors(descriptors_1, descriptors_2, DistanceCriterion.COS)
+    
+    # Find transformation and eliminate outliers
+    print("Finding transformation...")
+    homography, right_matchs, matched_line = match(
+        sar_img, opt_img, dmatchs, keypoints_1, keypoints_2, "perspective"
+    )
+    
+    # Calculate statistics
+    NM = len(dmatchs)        # Number of matches
+    NCM = len(right_matchs)  # Number of consensus (inlier) matches
+    ratio = NCM / NM if NM != 0 else 0
+    
+    # Create mosaic and fusion images
+    from SAR_Sift.matching import image_fusion
+#    fusion_image, mosaic_image = image_fusion(sar_img, opt_img, homography)
+    
+    # Calculate RMSE
+    rmse = 0
+    if len(right_matchs) > 0:
+        # Extract matched points for RMSE calculation
+        pts1 = np.array([keypoints_1[m.queryIdx].pt for m in right_matchs])
+        pts2 = np.array([keypoints_2[m.trainIdx].pt for m in right_matchs])
+        
+        # Apply transformation
+        ones = np.ones((len(pts2), 1))
+        pts_homogeneous = np.hstack((pts2, ones))
+        transformed = np.dot(homography, pts_homogeneous.T).T
+        transformed[:, :2] = transformed[:, :2] / transformed[:, 2:]
+        
+        # Calculate RMSE
+        errors = transformed[:, :2] - pts1
+        rmse = np.sqrt(np.mean(np.sum(errors**2, axis=1)))
+    
+    execution_time = time.time() - start_time
+    
+    # Convert SAR-SIFT keypoints to OpenCV keypoints for visualization
+    cv_keypoints_1 = []
+    cv_keypoints_2 = []
+    
+    for kp in keypoints_1:
+        cv_kp = cv2.KeyPoint(
+            x=kp.pt[0], 
+            y=kp.pt[1],
+            size=kp.size,
+            angle=kp.angle,
+            response=kp.response,
+            octave=kp.octave
+        )
+        cv_keypoints_1.append(cv_kp)
+    
+    for kp in keypoints_2:
+        cv_kp = cv2.KeyPoint(
+            x=kp.pt[0], 
+            y=kp.pt[1],
+            size=kp.size,
+            angle=kp.angle,
+            response=kp.response,
+            octave=kp.octave
+        )
+        cv_keypoints_2.append(cv_kp)
+    
+    # Convert match objects for visualization
+    cv_matches = []
+    for m in right_matchs:
+        cv_match = cv2.DMatch(m.queryIdx, m.trainIdx, m.distance)
+        cv_matches.append(cv_match)
+    
+    # Create match visualization
+    matches_img = cv2.drawMatches(
+        sar_img, cv_keypoints_1,
+        opt_img, cv_keypoints_2,
+        cv_matches, None,
+        matchColor=(0, 255, 0),
+        singlePointColor=(255, 0, 0),
+        flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
+    )
+    
+    # Return results as a dictionary
+    return {
+        'NM': NM,
+        'NCM': NCM,
+        'ratio': ratio,
+        'reg_time': execution_time,
+        'rmse': rmse,
+        'transformation_matrix': homography,
+        'registered_img': None,
+        'mosaic_img': None,
+        'matches_img': matches_img,
+        'keypoints_sar': np.array([kp.pt for kp in keypoints_1]),
+        'keypoints_opt': np.array([kp.pt for kp in keypoints_2]),
+        'good_matches': cv_matches
     }

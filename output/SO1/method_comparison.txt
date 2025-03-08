@@ -1,0 +1,6 @@
+METHOD COMPARISON
+===============
+
+Method     SAR Keypoints   OPT Keypoints   Matches         Inliers         Matrix RMSE          Time (sec)     
+---------------------------------------------------------------------------------------------------------
+SARSIFT    2000            170             2000            8               228.704567           91.6408        

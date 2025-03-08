@@ -12,8 +12,8 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  LGHD : Implemented
 -  OS-SIFT : Need Refiniment (optical image no keypoint)
 -  SAR-Sift : Implemented
--   ~~POS-GIFT ~~ : Code obfuscated
--   ~~CoFSM ~~ : Code obfuscated
+-   ~~POS-GIFT~~ : Code obfuscated
+-   ~~CoFSM~~ : Code obfuscated
 
 ## Metrics
 The extracted metrics are

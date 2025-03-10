@@ -243,7 +243,7 @@ def process_rift(sar_img, opt_img):
     
     # Generate visualization images
     registered_img, mosaic_img = _create_fusion_images(sar_img_bgr, opt_img_bgr, H)
-    matches_img = _create_matches_visualization(sar_img_bgr, opt_img_bgr, consensus_pts1, consensus_pts2)
+    matches_img = _create_matches_visualization_rift(sar_img_bgr, opt_img_bgr, consensus_pts1, consensus_pts2)
     
     # Calculate statistics
     NM = len(matched_pts1)
@@ -460,9 +460,9 @@ def _crop_to_content(img1, img2, border=10):
     return img1, img2
 
 
-def _create_matches_visualization(img1, img2, pts1, pts2):
+def _create_matches_visualization_rift(img1, img2, pts1, pts2):
     """Create a visualization of matched points between two images."""
-    from utils import make_match_image
+    from .utils import make_match_image
     return make_match_image(img1, img2, pts1, pts2)
 
 def process_lghd(sar_img_path, opt_img_path):

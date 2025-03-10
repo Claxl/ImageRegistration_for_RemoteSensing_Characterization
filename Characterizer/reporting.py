@@ -79,7 +79,7 @@ def _write_transformation_matrix(file, results):
     if 'transformation_matrix' in results and results['transformation_matrix'] is not None:
         file.write("\nTransformation Matrix:\n")
         for row in results['transformation_matrix']:
-            file.write(f"{row[0]:.6f} {row[1]:.6f} {row[2]:.6f}\n")
+            file.write(f"{row[0]:.6f}\t{row[1]:.6f}\t{row[2]:.6f}\n")
 
 
 def compare_methods(results_by_method, output_dir):
@@ -124,8 +124,7 @@ def compare_methods(results_by_method, output_dir):
 
 def _write_comparison_header(file):
     """Write the comparison table header to a file."""
-    header = "{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15}".format(
-        "Method", "SAR Keypoints", "OPT Keypoints", "Matches", "Inliers", "Matrix RMSE", "Time (sec)")
+    header = "Method\tSAR Keypoints\tOPT Keypoints\tMatches\tInliers\tMatrix RMSE\tTime (sec)"
     file.write(header + "\n")
     file.write("-" * 105 + "\n")
 
@@ -135,15 +134,9 @@ def _write_method_row(file, method, results):
     # Format matrix RMSE based on type
     matrix_rmse_str = _format_matrix_rmse(results)
     
-    file.write("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15.4f}\n".format(
-        method, 
-        results['num_keypoints_sar'],
-        results['num_keypoints_opt'],
-        results['num_matches'],
-        results['num_inliers'],
-        matrix_rmse_str,
-        results['execution_time']
-    ))
+    row = f"{method}\t{results['num_keypoints_sar']}\t{results['num_keypoints_opt']}\t{results['num_matches']}\t"
+    row += f"{results['num_inliers']}\t{matrix_rmse_str}\t{results['execution_time']:.4f}"
+    file.write(row + "\n")
 
 
 def _format_matrix_rmse(results):
@@ -162,8 +155,7 @@ def _print_comparison_table(results_by_method):
     logger.info("\n==== Comparison of Methods ====")
     
     # Print header
-    header = "{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15}".format(
-        "Method", "SAR Keypoints", "OPT Keypoints", "Matches", "Inliers", "Matrix RMSE", "Time (sec)")
+    header = "Method\tSAR Keypoints\tOPT Keypoints\tMatches\tInliers\tMatrix RMSE\tTime (sec)"
     logger.info(header)
     logger.info("-" * len(header))
     
@@ -171,15 +163,9 @@ def _print_comparison_table(results_by_method):
     for method, results in results_by_method.items():
         matrix_rmse_str = _format_matrix_rmse(results)
         
-        logger.info("{:<10} {:<15} {:<15} {:<15} {:<15} {:<20} {:<15.4f}".format(
-            method, 
-            results['num_keypoints_sar'],
-            results['num_keypoints_opt'],
-            results['num_matches'],
-            results['num_inliers'],
-            matrix_rmse_str,
-            results['execution_time']
-        ))
+        row = f"{method}\t{results['num_keypoints_sar']}\t{results['num_keypoints_opt']}\t{results['num_matches']}\t"
+        row += f"{results['num_inliers']}\t{matrix_rmse_str}\t{results['execution_time']:.4f}"
+        logger.info(row)
 
 
 def create_summary_report(results_by_set, methods, output_dir):
@@ -323,12 +309,6 @@ def _write_avg_method_row(file, method, metrics):
     else:
         matrix_rmse_str = "N/A"
     
-    file.write("{:<10} {:<15.2f} {:<15.2f} {:<15.2f} {:<15.2f} {:<20} {:<15.4f}\n".format(
-        method,
-        metrics['num_keypoints_sar'],
-        metrics['num_keypoints_opt'],
-        metrics['num_matches'],
-        metrics['num_inliers'],
-        matrix_rmse_str,
-        metrics['execution_time']
-    ))
+    row = f"{method}\t{metrics['num_keypoints_sar']:.2f}\t{metrics['num_keypoints_opt']:.2f}\t{metrics['num_matches']:.2f}\t"
+    row += f"{metrics['num_inliers']:.2f}\t{matrix_rmse_str}\t{metrics['execution_time']:.4f}"
+    file.write(row + "\n")

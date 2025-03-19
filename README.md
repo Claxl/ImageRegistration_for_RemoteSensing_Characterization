@@ -12,6 +12,8 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  OS-SIFT : Need Refiniment (optical image no keypoint)
 -  SAR-Sift : Implemented
 -   MINIMA : Implemented
+-   CNN : In progress
+-   Faber : In progress
 
 ## Metrics
 The extracted metrics are
@@ -34,6 +36,8 @@ The extracted metrics are
 - E. Rublee, V. Rabaud, K. Konolige and G. Bradski, "ORB: An efficient alternative to SIFT or SURF," 2011 International Conference on Computer Vision, Barcelona, Spain, 2011, pp. 2564-2571, doi: 10.1109/ICCV.2011.6126544.
 - Alcantarilla, Pablo F., and T. Solutions. "Fast explicit diffusion for accelerated features in nonlinear scale spaces."
 - MINIMA: Modality Invariant Image Matching, Jiang, Xingyu and Ren, Jiangwei and Li, Zizhuo and Zhou, Xin and Liang, Dingkang and Bai, Xiang
+- Multi-Temporal Remote Sensing Image Registration Using Deep Convolutional Features, Z. Yang and T. Dan and Y. Yang
+- Faber: a Hardware/Soft-ware Toolchain for Image Registration, D'Arnese, Eleonora and Conficconi, Davide and Del Sozzo, Emanuele and Fusco, Luigi and Sciuto, Donatella and Santambrogio, Marco D
 
 ### Dataset used
 - Jiang, X., Ma, J., Xiao, G., Shao, Z., & Guo, X. (2021). A review of multimodal image matching: Methods and applications. Information Fusion, 73, 22–71.

@@ -29,7 +29,7 @@ class DataIOWrapper(nn.Module):
     def __init__(self, model, config, ckpt=None):
         super().__init__()
 
-        self.device = torch.device('cuda:{}'.format(0) if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cpu')
         torch.set_grad_enabled(False)
         self.model = model
         self.config = config
@@ -123,10 +123,10 @@ class DataIOWrapper(nn.Module):
                                                        recompute_scale_factor=False)[0].bool()
             batch.update({'mask0': ts_mask_0.unsqueeze(0), 'mask1': ts_mask_1.unsqueeze(0)})
 
-        torch.cuda.synchronize()
+        #torch.cuda.synchronize()
         start = time.time()
         pred = self.model(batch)
-        torch.cuda.synchronize()
+       # torch.cuda.synchronize()
         match_1 = time.time()
         match_time = match_1 - start
 

@@ -49,6 +49,10 @@ def save_metrics(results, method, output_dir):
             
             # Write transformation matrix if available
             _write_transformation_matrix(f, results)
+            if 'points_rmse' in results and results['points_rmse'] is not None:
+                f.write(f"RMSE between transformed landmarks and ground truth points: {results['points_rmse']:.2f} pixels\n")
+            else:
+                f.write("RMSE between transformed landmarks and ground truth points: N/A\n")
             
     except Exception as e:
         logger.error(f"Error saving metrics to {metrics_file}: {e}")
@@ -133,9 +137,10 @@ def _write_method_row(file, method, results):
     """Write a row of method results to the comparison table."""
     # Format matrix RMSE based on type
     matrix_rmse_str = _format_matrix_rmse(results)
-    
+    points_rmse_str = f"{results['points_rmse']:.2f}" if 'points_rmse' in results and results['points_rmse'] is not None else "N/A"
+
     row = f"{method}\t{results['num_keypoints_sar']}\t{results['num_keypoints_opt']}\t{results['num_matches']}\t"
-    row += f"{results['num_inliers']}\t{matrix_rmse_str}\t{results['execution_time']:.4f}"
+    row += f"{results['num_inliers']}\t{matrix_rmse_str}\t{points_rmse_str}\t{results['execution_time']:.4f}"
     file.write(row + "\n")
 
 

@@ -64,22 +64,22 @@ def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher,
     method = method.upper()
     
     if method == "RIFT" and detector is None and matcher is None:
-        return _process_with_rift(sar_img, opt_img, transform_gt, start_reg_time)
+        return _process_with_rift(sar_img, opt_img, transform_gt, start_reg_time,landmarks_mov, landmarks_fix,)
         
     elif method == "LGHD" and detector is None and matcher is None:
-        return _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_reg_time)
+        return _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_reg_time,landmarks_mov, landmarks_fix,)
         
     elif hasattr(detector, 'sar_sift'):
-        return _process_with_sarsift(sar_img, opt_img, transform_gt, start_reg_time)
+        return _process_with_sarsift(sar_img, opt_img, transform_gt, start_reg_time,landmarks_mov, landmarks_fix,)
     
     else:
         return _process_with_opencv(
             sar_img, opt_img, detector, matcher, 
-            transform_gt, ratio_thresh, start_reg_time
+            transform_gt, ratio_thresh, start_reg_time,landmarks_mov, landmarks_fix,
         )
 
 
-def _process_with_rift(sar_img, opt_img, transform_gt, start_time):
+def _process_with_rift(sar_img, opt_img, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using RIFT algorithm."""
     logger.info("Processing with RIFT algorithm")
     results = process_rift(sar_img, opt_img)
@@ -109,7 +109,7 @@ def _process_with_rift(sar_img, opt_img, transform_gt, start_time):
     }
 
 
-def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time):
+def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using LGHD algorithm."""
     logger.info("Processing with LGHD algorithm")
     results = process_lghd(sar_img_path, opt_img_path)
@@ -118,7 +118,17 @@ def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time):
     matrix_rmse = None
     if transform_gt is not None and results['transformation_matrix'] is not None:
         matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
-    
+    if landmarks_mov is not None and landmarks_fix is not None:
+            # Transform the SAR (moving) landmarks using estimated homography
+            landmarks_mov_homogeneous = np.hstack((landmarks_mov, np.ones((landmarks_mov.shape[0], 1))))
+            transformed_landmarks = np.dot(landmarks_mov_homogeneous, results['transformation_matrix'].T)
+            # Apply perspective division
+            transformed_landmarks = transformed_landmarks[:, :2] / transformed_landmarks[:, 2:3]
+                
+            # Calculate RMSE between transformed landmarks and ground truth landmarks
+            points_rmse = compute_rmse_points(transformed_landmarks, landmarks_fix)
+            print(f"Point-based RMSE: {points_rmse:.2f} pixels")
+
     return {
         'num_keypoints_sar': len(results['keypoints_sar']),
         'num_keypoints_opt': len(results['keypoints_opt']),
@@ -127,13 +137,14 @@ def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time):
         'matrix_rmse': matrix_rmse,
         'execution_time': results['reg_time'],
         'transformation_matrix': results['transformation_matrix'],
+        'points_rmse': points_rmse,  # Add this line to include points RMSE in results
         'registered_img': results['registered_img'],
         'matches_img': results['matches_img'],
         'mosaic_img': results.get('mosaic_img')
     }
 
 
-def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time):
+def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using SAR-SIFT algorithm."""
     logger.info("Processing with SAR-SIFT algorithm")
     results = process_sarsift(sar_img, opt_img)
@@ -157,7 +168,7 @@ def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time):
     }
 
 
-def _process_with_opencv(sar_img, opt_img, detector, matcher, transform_gt, ratio_thresh, start_time):
+def _process_with_opencv(sar_img, opt_img, detector, matcher, transform_gt, ratio_thresh, start_time,landmarks_mov, landmarks_fix,):
     """Process images using standard OpenCV detectors and matchers."""
     logger.info("Processing with OpenCV-based algorithm")
     

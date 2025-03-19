@@ -16,7 +16,7 @@ def load_roma(args, test_orginal_megadepth=False):
     from MINIMA.src.utils.data_io_roma import DataIOWrapper, lower_config
     config = get_cfg_defaults(inference=True)
     config = lower_config(config)
-    device = torch.device('cuda:{}'.format(0) if torch.cuda.is_available() else 'cpu')
+    device = 'cpu'
     if args.ckpt2 == 'large':
         # print('loading large roma model')
         if args.ckpt is not None:
@@ -73,7 +73,7 @@ def load_sp_lg(args, test_orginal_megadepth=False):
     class Matching(torch.nn.Module):
         def __init__(self, sp_conf, lg_conf):
             super().__init__()
-            device = torch.device('cuda:{}'.format(0) if torch.cuda.is_available() else 'cpu')
+            device = 'cpu'
             self.extractor = SuperPoint(**sp_conf).eval().to(device)  # load the feature extractor
             self.matcher = LightGlue(features='superpoint', **lg_conf).eval().to(device)  # load the matcher
             n_layers = lg_conf['n_layers']

@@ -89,7 +89,7 @@ def parse_arguments():
     parser.add_argument(
         "--model", 
         type=str,
-        default="loftr",
+        default="loftr,roma,sp_lg",
         help="Select model for MINIMA"
     )
     parser.add_argument(
@@ -169,7 +169,8 @@ def main():
     # Parse and validate methods
     methods = args.methods.split(',')
     methods = validate_methods(methods)
-    
+    model = args.model.split(',')
+
     if not methods:
         logger.error("No valid methods selected for processing.")
         return
@@ -197,7 +198,7 @@ def main():
         args.tag, 
         args.ratio_thresh, 
         args.visualize,
-        args.model
+        model
     )
     
     logger.info(f"Processing complete. Results saved to {output_dir}")

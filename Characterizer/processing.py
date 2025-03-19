@@ -101,13 +101,21 @@ def _process_single_set(file_set, methods, output_dir, ratio_thresh, visualize, 
     
     for method in methods:
         logger.info(f"methods: {method}")
-        if model 
-        method_results = _process_with_method(
-            method, file_set, landmarks_mov, landmarks_fix, 
-            transform_gt, ratio_thresh, set_output_dir, visualize, model=model
-        )
-        if method_results:
-            results_by_method[method] = method_results
+        if method.upper() == "MINIMA" and MINIMA_AVAILABLE and isinstance(model, list):
+            for m in model:
+                method_results = _process_with_method(
+                    method, file_set, landmarks_mov, landmarks_fix, 
+                    transform_gt, ratio_thresh, set_output_dir, visualize, model=m
+                )
+                if method_results:
+                    results_by_method[method + "_" + m] = method_results
+        else:
+            method_results = _process_with_method(
+                method, file_set, landmarks_mov, landmarks_fix, 
+                transform_gt, ratio_thresh, set_output_dir, visualize, model=model
+            )
+            if method_results:
+                results_by_method[method] = method_results
     
     # Compare methods for this set
     if results_by_method:

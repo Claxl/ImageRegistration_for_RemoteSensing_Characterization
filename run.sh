@@ -8,7 +8,8 @@ fi
 DATASETS=("CrossSeason" "DayNight" "DepthOptical" "Infrared_Optical" "Map_Optical" "Optical_Optical" "SAR_Optical")
 BASE_FOLDER="DATASET/RemoteSensing"
 OUTPUT_BASE="output"
-METHODS="surf"
+METHODS="SIFT,SURF,ORB,BRISK,AKAZE,RIFT,LGHD,MINIMA"
+MODEL="sp_lg,loftr"
 SCRIPT="main.py"
 # Itera su ciascun dataset ed esegui il comando
 for DATASET in "${DATASETS[@]}"; do
@@ -26,7 +27,7 @@ for DATASET in "${DATASETS[@]}"; do
     fi
 
     echo "Eseguendo: python3 $SCRIPT --data_folder $DATA_FOLDER --visualize --methods=$METHODS --output_dir $OUTPUT_DIR"
-    python3 "$SCRIPT" --data_folder "$DATA_FOLDER" --visualize --methods="$METHODS" --output_dir "$OUTPUT_DIR"
+    python3 "$SCRIPT" --data_folder "$DATA_FOLDER" --visualize --methods="$METHODS" --model "$MODEL" --output_dir "$OUTPUT_DIR"
     # Controlla se il comando è andato a buon fine
     if [ $? -eq 0 ]; then
         echo "Esecuzione completata con successo per $DATASET!"

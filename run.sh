@@ -26,8 +26,8 @@ for DATASET in "${DATASETS[@]}"; do
         exit 1
     fi
 
-    echo "Eseguendo: python3 $SCRIPT --data_folder $DATA_FOLDER --visualize --methods=$METHODS --output_dir $OUTPUT_DIR"
-    python3 "$SCRIPT" --data_folder "$DATA_FOLDER" --visualize --methods="$METHODS" --model "$MODEL" --output_dir "$OUTPUT_DIR"
+    echo "Eseguendo: python3 $SCRIPT --data_folder $DATA_FOLDER --visualize --methods=$METHODS --model=$MODEL --output_dir $OUTPUT_DIR"
+    python3 "$SCRIPT" --data_folder "$DATA_FOLDER" --visualize --methods="$METHODS" --model="$MODEL" --output_dir "$OUTPUT_DIR"
     # Controlla se il comando è andato a buon fine
     if [ $? -eq 0 ]; then
         echo "Esecuzione completata con successo per $DATASET!"

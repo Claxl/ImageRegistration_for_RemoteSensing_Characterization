@@ -8,12 +8,9 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  ORB : Implemented
 -  AKAZE : Implemented
 -  RIFT : Implemented
--  ~~HOPC~~ : Not working properly
 -  LGHD : Implemented
 -  OS-SIFT : Need Refiniment (optical image no keypoint)
 -  SAR-Sift : Implemented
--   ~~POS-GIFT~~ : Code obfuscated
--   ~~CoFSM~~ : Code obfuscated
 -   MINIMA : Implemented
 
 ## Metrics

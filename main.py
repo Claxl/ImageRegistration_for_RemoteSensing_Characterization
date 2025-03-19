@@ -25,7 +25,7 @@ import argparse
 import logging
 from pathlib import Path
 from datetime import datetime
-from Characterizer.detectors import RIFT_AVAILABLE, LGHD_AVAILABLE, SARSIFT_AVAILABLE
+from Characterizer.detectors import RIFT_AVAILABLE, LGHD_AVAILABLE, SARSIFT_AVAILABLE, MINIMA_AVAILABLE
 from Characterizer.processing import process_from_folder
 
 # Configure logging
@@ -87,6 +87,12 @@ def parse_arguments():
         help="Create visualizations of results."
     )
     parser.add_argument(
+        "--model", 
+        type=str,
+        default="loftr",
+        help="Select model for MINIMA"
+    )
+    parser.add_argument(
         "--debug", 
         action="store_true",
         help="Show debug information."
@@ -121,7 +127,10 @@ def validate_methods(methods_list):
         if method == "SARSIFT" and not SARSIFT_AVAILABLE:
             logger.warning("SAR-SIFT method was requested but is not available. It will be skipped.")
             continue
-            
+        if method == "MINIMA" and not MINIMA_AVAILABLE:
+            logger.warning("MINIMA method was requested but is not available. It will be skipped.")
+            continue
+
         valid_methods.append(method)
     
     return valid_methods
@@ -187,7 +196,8 @@ def main():
         str(output_dir), 
         args.tag, 
         args.ratio_thresh, 
-        args.visualize
+        args.visualize,
+        args.model
     )
     
     logger.info(f"Processing complete. Results saved to {output_dir}")

@@ -149,7 +149,7 @@ def find_matching_files_in_folder(folder_path, tag=None):
             opt_files = _find_matching_image_files(all_filenames, opt_pattern)
             
             if sar_files and opt_files:
-                _log_matching_set(current_tag, number, mat_file, sar_files[0], opt_files[0])
+                #_log_matching_set(current_tag, number, mat_file, sar_files[0], opt_files[0])
                 
                 matching_sets.append({
                     'tag': current_tag,

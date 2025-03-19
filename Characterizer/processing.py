@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import logging
 from pathlib import Path
-from .detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE, SARSIFT_AVAILABLE
+from .detectors import create_detector_and_matcher, RIFT_AVAILABLE, LGHD_AVAILABLE, SARSIFT_AVAILABLE, MINIMA_AVAILABLE
 from .registration import process_image_pair_with_gt
 from .utils import load_ground_truth, find_matching_files_in_folder
 from .reporting import save_metrics, compare_methods, create_summary_report
@@ -27,7 +27,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh=0.7, visualize=True):
+def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh=0.7, visualize=True, model=None):
     """
     Process sets of images from a folder containing SAR, optical images, and ground truth.
     
@@ -54,8 +54,8 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
     
     for file_set in matching_sets:
         results_by_method = _process_single_set(
-            file_set, methods, output_dir, ratio_thresh, visualize
-        )
+            file_set, methods, output_dir, ratio_thresh, visualize, model)
+        
         
         set_name = f"{file_set['tag']}{file_set['number']}"
         results_by_set[set_name] = results_by_method
@@ -66,7 +66,7 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
     return results_by_set
 
 
-def _process_single_set(file_set, methods, output_dir, ratio_thresh, visualize):
+def _process_single_set(file_set, methods, output_dir, ratio_thresh, visualize, model=None):
     """
     Process a single set of images (SAR, optical, ground truth).
     
@@ -81,7 +81,7 @@ def _process_single_set(file_set, methods, output_dir, ratio_thresh, visualize):
         dict: Results by method
     """
     set_name = f"{file_set['tag']}{file_set['number']}"
-    logger.info(f"\nProcessing set: {set_name}")
+   # logger.info(f"\nProcessing set: {set_name}")
     
     # Create dedicated output directory for this set
     set_output_dir = Path(output_dir) / set_name
@@ -100,11 +100,12 @@ def _process_single_set(file_set, methods, output_dir, ratio_thresh, visualize):
     results_by_method = {}
     
     for method in methods:
+        logger.info(f"methods: {method}")
+        if model 
         method_results = _process_with_method(
             method, file_set, landmarks_mov, landmarks_fix, 
-            transform_gt, ratio_thresh, set_output_dir, visualize
+            transform_gt, ratio_thresh, set_output_dir, visualize, model=model
         )
-        
         if method_results:
             results_by_method[method] = method_results
     
@@ -116,7 +117,7 @@ def _process_single_set(file_set, methods, output_dir, ratio_thresh, visualize):
 
 
 def _process_with_method(method, file_set, landmarks_mov, landmarks_fix, 
-                       transform_gt, ratio_thresh, output_dir, visualize):
+                       transform_gt, ratio_thresh, output_dir, visualize, model):
     """
     Process a file set using a specific registration method.
     
@@ -133,7 +134,8 @@ def _process_with_method(method, file_set, landmarks_mov, landmarks_fix,
         dict: Registration results for this method
     """
     logger.info(f"\n==== Processing with {method} for set {file_set['tag']}{file_set['number']} ====")
-    
+    if method.upper() == "MINIMA" and MINIMA_AVAILABLE:
+        logger.info(f"Using MINIMA method: {model}")
     try:
         # Skip unavailable methods
         if method.upper() == "RIFT" and not RIFT_AVAILABLE:
@@ -148,13 +150,17 @@ def _process_with_method(method, file_set, landmarks_mov, landmarks_fix,
             logger.warning(f"Skipping SAR-SIFT method as it's not available")
             return None
         
+        if method.upper() == "MINIMA" and not MINIMA_AVAILABLE:
+            logger.warning(f"Skipping MINIMA method as it's not available")
+            return None
         # Create detector and matcher
+        logger.info(f"Creating detector and matcher for {method}")
         detector, matcher = create_detector_and_matcher(method)
         
         # Process the image pair
         results = process_image_pair_with_gt(
             file_set['sar_file'], file_set['opt_file'], detector, matcher,
-            landmarks_mov, landmarks_fix, transform_gt, ratio_thresh, method
+            landmarks_mov, landmarks_fix, transform_gt, ratio_thresh, method, model
         )
         
         # Log results

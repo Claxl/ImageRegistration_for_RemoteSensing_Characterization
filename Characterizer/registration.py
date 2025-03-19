@@ -14,7 +14,7 @@ import numpy as np
 import time
 import logging
 from .metrics import compute_rmse_matrices, compute_rmse_points
-from .detectors import process_rift, process_lghd, process_sarsift
+from .detectors import process_rift, process_lghd, process_sarsift, process_minima
 from .utils import make_match_image
 
 # Configure logging
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher, 
                               landmarks_mov, landmarks_fix, transform_gt=None, 
-                              ratio_thresh=0.7, method=""):
+                              ratio_thresh=0.7, method="", model ="loftr"):
     """
     Process an image pair with ground truth data for evaluation.
     
@@ -46,7 +46,7 @@ def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher,
         dict: Registration results and evaluation metrics
     """
     start_reg_time = time.time()
-    
+    logger.info(f"Processing image pair: {sar_img_path}, {opt_img_path}")
     # Load images
     try:
         sar_img = cv2.imread(sar_img_path, cv2.IMREAD_GRAYSCALE)
@@ -71,7 +71,10 @@ def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher,
         
     elif hasattr(detector, 'sar_sift'):
         return _process_with_sarsift(sar_img, opt_img, transform_gt, start_reg_time,landmarks_mov, landmarks_fix,)
-    
+    elif method == "MINIMA":
+        dict = process_with_MINIMA(sar_img_path, opt_img_path, matcher= model, transform_gt=transform_gt)
+        logger.info(f"{dict}")
+        return dict
     else:
         return _process_with_opencv(
             sar_img, opt_img, detector, matcher, 
@@ -103,6 +106,26 @@ def _process_with_rift(sar_img, opt_img, transform_gt, start_time,landmarks_mov,
         'matrix_rmse': matrix_rmse,
         'execution_time': results['reg_time'],
         'transformation_matrix': results['transformation_matrix'],
+        'registered_img': results['registered_img'],
+        'matches_img': results['matches_img'],
+        'mosaic_img': results.get('mosaic_img')
+    }
+
+def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
+    """Process images using MINIMA algorithm."""
+    logger.info("Processing with MINIMA algorithm")
+    results = process_minima(sar_img_path, opt_img_path, method=matcher)
+    if transform_gt is not None and results['transformation_matrix'] is not None:
+        matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
+    return {
+        'num_keypoints_sar': len(results['keypoints_sar']),
+        'num_keypoints_opt': len(results['keypoints_opt']),
+        'num_matches': results['NM'],
+        'num_inliers': results['NCM'],
+        'matrix_rmse': matrix_rmse,
+        'execution_time': results['reg_time'],
+        'transformation_matrix': results['transformation_matrix'],
+        'points_rmse': None,  # Add this line to include points RMSE in results
         'registered_img': results['registered_img'],
         'matches_img': results['matches_img'],
         'mosaic_img': results.get('mosaic_img')

@@ -9,7 +9,6 @@ and matching algorithms used in image registration, including:
 - OpenCV built-in methods (SIFT, SURF, ORB, AKAZE, BRISK)
 - External methods (RIFT, LGHD, SAR-SIFT) when available
 """
-
 import cv2
 import numpy as np
 import time
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 RIFT_AVAILABLE = False
 LGHD_AVAILABLE = False
 SARSIFT_AVAILABLE = False
+MINIMA_AVAILABLE = False
 
 # Try to import RIFT modules
 try:
@@ -54,6 +54,15 @@ try:
     logger.info("SAR-SIFT module is available and will be used if selected.")
 except ImportError:
     logger.warning("SAR-SIFT module not available. SAR-SIFT method will be skipped if requested.")
+
+
+try:
+    from MINIMA import demo
+    MINIMA_AVAILABLE = True
+    logger.info("MINIMA module is available and will be used if selected.")
+except ImportError as e:
+    logger.warning(f"MINIMA module not available. MINIMA method will be skipped if requested. {e}")
+
 
 
 class SARSIFTDetector:
@@ -105,7 +114,7 @@ def create_detector_and_matcher(method):
         ValueError: If the method is not recognized or not available
     """
     method = method.upper()
-    
+    logger.error(f"Creating detector and matcher for method: {method}")
     # Dictionary mapping methods to their initialization functions
     detector_factory = {
         "SIFT": _create_sift,
@@ -115,7 +124,8 @@ def create_detector_and_matcher(method):
         "BRISK": _create_brisk,
         "RIFT": _create_rift,
         "LGHD": _create_lghd,
-        "SARSIFT": _create_sarsift
+        "SARSIFT": _create_sarsift,
+        "MINIMA": _create_MINIMA,
     }
     
     if method not in detector_factory:
@@ -123,6 +133,10 @@ def create_detector_and_matcher(method):
     
     return detector_factory[method]()
 
+
+def _create_MINIMA():
+    """Create MINIMA detector and matcher."""
+    return None, None
 
 def _create_sift():
     """Create SIFT detector and matcher."""
@@ -353,6 +367,35 @@ def _estimate_transformation(pts1, pts2, ransac_threshold=3.0):
         return H, mask, consensus_pts1, consensus_pts2
     else:
         return H, mask, pts1, pts2
+
+class Args:
+    def __init__(self, fig1, fig2, method):
+        self.fig1 = fig1
+        self.fig2 = fig2
+        self.method = method
+        self.ckpt = None
+        self.ckpt2 = None
+        self.exp_name =None
+        self.thr = None
+
+    def add_method_arguments(self, method):
+        if method == "loftr":
+            self.ckpt = "MINIMA/weights/minima_loftr.ckpt"
+            self.thr = 0.2
+        elif method == "sp_lg":
+            self.ckpt = "MINIMA/weights/minima_lightglue.pth"
+        elif method == "roma":
+            self.ckpt2 = "large"
+            self.ckpt = "MINIMA/weights/minima_roma.pth"
+
+
+
+def process_minima(sar_img_path, opt_img_path,method):
+    sar_img = cv2.imread(sar_img_path, cv2.IMREAD_GRAYSCALE)
+    opt_img = cv2.imread(opt_img_path, cv2.IMREAD_GRAYSCALE)
+    args = Args(fig1=opt_img_path, fig2=sar_img_path, method=method)
+    args.add_method_arguments(method)
+    return demo.test_relative_pose_demo(method= method, save_dir=None, save_figs=True, args=args)
 
 
 def _calculate_rmse(pts1, pts2, H):

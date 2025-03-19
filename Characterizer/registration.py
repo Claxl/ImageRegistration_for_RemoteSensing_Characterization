@@ -117,6 +117,7 @@ def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
     results = process_minima(sar_img_path, opt_img_path, method=matcher)
     if transform_gt is not None and results['transformation_matrix'] is not None:
         matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
+        print(matrix_rmse)
     return {
         'num_keypoints_sar': len(results['keypoints_sar']),
         'num_keypoints_opt': len(results['keypoints_opt']),

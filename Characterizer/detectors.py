@@ -114,7 +114,6 @@ def create_detector_and_matcher(method):
         ValueError: If the method is not recognized or not available
     """
     method = method.upper()
-    logger.error(f"Creating detector and matcher for method: {method}")
     # Dictionary mapping methods to their initialization functions
     detector_factory = {
         "SIFT": _create_sift,

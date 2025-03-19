@@ -39,7 +39,8 @@ def compute_rmse_matrices(H_pred, H_gt):
     if H_pred is None or H_gt is None:
         logger.warning("Cannot compute RMSE: one or both matrices are None")
         return None
-    
+    if(isinstance(H_pred, list)):
+        H_pred = np.array(H_pred)
     try:
         # Verify matrix shapes
         if H_pred.shape != H_gt.shape:

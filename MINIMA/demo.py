@@ -61,7 +61,10 @@ def eval_relapose(
     # Eval on pair
     im0 = pair['im0']
     im1 = pair['im1']
-
+    if torch.is_tensor(im0):
+        im0 = im0.float()  # Converte a float32
+    if torch.is_tensor(im1):
+        im1 = im1.float()  # Converte a float32
     match_res = matcher(im0, im1)
     img0_color = cv2.imread(im0)
     img1_color = cv2.imread(im1)

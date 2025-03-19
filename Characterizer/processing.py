@@ -59,8 +59,18 @@ def process_from_folder(folder_path, methods, output_dir, tag=None, ratio_thresh
         
         set_name = f"{file_set['tag']}{file_set['number']}"
         results_by_set[set_name] = results_by_method
-    
-    # Create summary report
+    if isinstance(model, list):
+        # Crea una nuova lista dove per ogni elemento in methods
+        # Se l'elemento è "MINIMA", concatenalo con ogni elemento di model
+        # Altrimenti, mantieni l'elemento originale
+        new_methods = []
+        for m in methods:
+            if m.upper() == "MINIMA":
+                for mod in model:
+                    new_methods.append(m + "_" + mod)
+            else:
+                new_methods.append(m)
+        methods = new_methods    # Create summary report
     _create_summary(results_by_set, methods, output_dir)
     
     return results_by_set
@@ -116,6 +126,7 @@ def _process_single_set(file_set, methods, output_dir, ratio_thresh, visualize, 
             )
             if method_results:
                 results_by_method[method] = method_results
+        print(results_by_method)
     
     # Compare methods for this set
     if results_by_method:

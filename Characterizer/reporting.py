@@ -9,6 +9,8 @@ This module provides functionality to:
 2. Compare different registration methods
 3. Create summary reports across multiple data sets
 """
+# TODO: 
+# 1. MINIMA - Add a function to save the results of the registration to a text file0
 
 import os
 import logging
@@ -182,6 +184,7 @@ def create_summary_report(results_by_set, methods, output_dir):
         methods (list): List of methods used
         output_dir (str): Output directory for the report
     """
+    print(methods)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     

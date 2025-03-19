@@ -14,6 +14,7 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  SAR-Sift : Implemented
 -   ~~POS-GIFT~~ : Code obfuscated
 -   ~~CoFSM~~ : Code obfuscated
+-   MINIMA : Implemented
 
 ## Metrics
 The extracted metrics are
@@ -35,6 +36,7 @@ The extracted metrics are
 - Bay, Herbert, Tinne Tuytelaars, and Luc Van Gool. "Surf: Speeded up robust features." Computer Vision–ECCV 2006: 9th European Conference on Computer Vision, Graz, Austria, May 7-13, 2006.
 - E. Rublee, V. Rabaud, K. Konolige and G. Bradski, "ORB: An efficient alternative to SIFT or SURF," 2011 International Conference on Computer Vision, Barcelona, Spain, 2011, pp. 2564-2571, doi: 10.1109/ICCV.2011.6126544.
 - Alcantarilla, Pablo F., and T. Solutions. "Fast explicit diffusion for accelerated features in nonlinear scale spaces."
+- MINIMA: Modality Invariant Image Matching, Jiang, Xingyu and Ren, Jiangwei and Li, Zizhuo and Zhou, Xin and Liang, Dingkang and Bai, Xiang
 
 ### Dataset used
 - Jiang, X., Ma, J., Xiao, G., Shao, Z., & Guo, X. (2021). A review of multimodal image matching: Methods and applications. Information Fusion, 73, 22–71.

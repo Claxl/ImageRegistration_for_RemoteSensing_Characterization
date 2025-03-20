@@ -292,7 +292,8 @@ def _accumulate_metrics(avg_metrics, counts, matrix_rmse_counts, method, results
         else:
             avg_metrics[method]['matrix_rmse'] += results['matrix_rmse']
         matrix_rmse_counts[method] += 1
-
+    else:
+        avg_metrics[method]['matrix_rmse'] = -1
 
 def _finalize_averages(avg_metrics, counts, matrix_rmse_counts, method):
     """Calculate final averages for a method."""

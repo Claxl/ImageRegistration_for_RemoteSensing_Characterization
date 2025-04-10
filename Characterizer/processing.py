@@ -205,10 +205,7 @@ def _process_with_method(method, file_set, landmarks_mov, landmarks_fix,
 
 def _log_results(results):
     """Log key metrics from registration results."""
-    logger.info(f"SAR Keypoints: {results['num_keypoints_sar']}")
-    logger.info(f"Optical Keypoints: {results['num_keypoints_opt']}")
-    logger.info(f"Number of matches: {results['num_matches']}")
-    logger.info(f"Number of inliers: {results['num_inliers']}")
+
     
     if 'matrix_rmse' in results and results['matrix_rmse'] is not None:
         # Handle numpy array case
@@ -220,6 +217,7 @@ def _log_results(results):
         logger.info("Matrix RMSE: N/A")
         
     logger.info(f"Execution time: {results['execution_time']:.4f} sec")
+    logger.info(f"Power_consumption: {results['power_consumption']:.4f} J")
 
 
 def _create_summary(results_by_set, methods, output_dir):

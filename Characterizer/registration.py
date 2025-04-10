@@ -15,8 +15,19 @@ import time
 import logging
 from .metrics import compute_rmse_matrices, compute_rmse_points
 from .detectors import process_rift, process_lghd, process_sarsift, process_minima
-from .utils import make_match_image
-import xlnx_platformstats.python-bindings.xlnx_platformstats as xlnx 
+
+import sys
+import os
+
+# Calcola il percorso assoluto della cartella dei bindings,
+# risalendo di una cartella rispetto a Characterizer e andando poi in xlnx_platformstats/python-bindings
+bindings_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'xlnx_platformstats', 'python-bindings'))
+
+# Inserisci il percorso in sys.path
+sys.path.insert(0, bindings_path)
+
+# Ora puoi importare il modulo
+import xlnx_platformstats
 import threading
 
 # Configure logging
@@ -27,11 +38,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def power_logging(stop_event, power):
-    power = xlnx.get_power()
-    count = 0
+    power = xlnx.get_power()[1]
+    logger.info(f"Power: {power/1000000:.2f} W")
+    count = 1
     while not stop_event.is_set():
-        power += xlnx.get_power()
-        logger.info(f"Power: {(power/count)/1000000:.2f} W")
+        power += xlnx.get_power()[1]
+        logger.info(f"Power: {(power[1]/count)/1000000:.2f} W")
         count += 1
         time.sleep(0.1)
     power = power/count

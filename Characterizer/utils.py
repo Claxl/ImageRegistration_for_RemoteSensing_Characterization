@@ -139,6 +139,10 @@ def load_ground_truth(gt_filepath):
     transform_gt = np.eye(3)
     return None, None, landmarks_fix, landmarks_mov, transform_gt
 
+
+
+def make_match_image(im1, im2, pts1, pts2, color=(0, 255, 255), radius=5, thickness=2):
+
     """
     Create a visualization image showing matches between two images.
     

@@ -128,7 +128,7 @@ def create_detector_and_matcher(method):
     }
     
     if method not in detector_factory:
-        raise ValueError(f"Method {method} not recognized.")
+        raise ValueError(f"Method { } not recognized.")
     
     return detector_factory[method]()
 

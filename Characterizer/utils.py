@@ -138,3 +138,62 @@ def load_ground_truth(gt_filepath):
     landmarks_mov = np.array([[102, 148], [198, 252]])
     transform_gt = np.eye(3)
     return None, None, landmarks_fix, landmarks_mov, transform_gt
+
+    """
+    Create a visualization image showing matches between two images.
+    
+    Args:
+        im1 (np.ndarray): First image (BGR or grayscale)
+        im2 (np.ndarray): Second image (BGR or grayscale)
+        pts1 (np.ndarray): Array of matched keypoints in image1 (x, y)
+        pts2 (np.ndarray): Array of matched keypoints in image2 (x, y)
+        color (tuple): BGR color for circles and lines
+        radius (int): Radius of the circle for each keypoint
+        thickness (int): Thickness of circles and lines
+        
+    Returns:
+        np.ndarray: Visualization image with both images side-by-side and matches drawn
+    """
+    # Ensure inputs are valid
+    if im1 is None or im2 is None or pts1 is None or pts2 is None:
+        logger.error("Invalid inputs to make_match_image")
+        return None
+    
+    if len(pts1) != len(pts2):
+        logger.error(f"Point count mismatch: {len(pts1)} vs {len(pts2)}")
+        return None
+    
+    # Ensure both images are in BGR format for visualization
+    im1_bgr = _ensure_bgr(im1)
+    im2_bgr = _ensure_bgr(im2)
+
+    # Get dimensions
+    h1, w1 = im1_bgr.shape[:2]
+    h2, w2 = im2_bgr.shape[:2]
+
+    # Create canvas for side-by-side display
+    height = max(h1, h2)
+    width = w1 + w2
+    match_vis = np.zeros((height, width, 3), dtype=np.uint8)
+
+    # Place images on canvas
+    match_vis[:h1, :w1] = im1_bgr
+    match_vis[:h2, w1:w1 + w2] = im2_bgr
+
+    # Draw each match
+    for (x1, y1), (x2, y2) in zip(pts1, pts2):
+        # Adjust x2 because the second image is shifted to the right by w1
+        x2_shifted = x2 + w1
+
+        try:
+            # Draw circles at the matched points
+            cv2.circle(match_vis, (int(x1), int(y1)), radius, color, thickness)
+            cv2.circle(match_vis, (int(x2_shifted), int(y2)), radius, color, thickness)
+
+            # Draw a line between them
+            cv2.line(match_vis, (int(x1), int(y1)), (int(x2_shifted), int(y2)), color, thickness)
+        except Exception as e:
+            logger.warning(f"Error drawing match from ({x1}, {y1}) to ({x2}, {y2}): {e}")
+            continue
+
+    return match_vis

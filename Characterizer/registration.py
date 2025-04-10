@@ -43,7 +43,7 @@ def power_logging(stop_event, power):
     count = 1
     while not stop_event.is_set():
         power += xlnx.get_power()[1]
-        logger.info(f"Power: {(power[1]/count)/1000000:.2f} W")
+        logger.info(f"Power: {(power/count)/1000000:.2f} W")
         count += 1
         time.sleep(0.1)
     power = power/count

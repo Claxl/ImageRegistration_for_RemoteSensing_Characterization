@@ -217,7 +217,7 @@ def _log_results(results):
         logger.info("Matrix RMSE: N/A")
         
     logger.info(f"Execution time: {results['execution_time']:.4f} sec")
-    logger.info(f"Power_consumption: {results['power_consumption']:.4f} J")
+    logger.info(f"Power_consumption: {results['power']:.4f} J")
 
 
 def _create_summary(results_by_set, methods, output_dir):

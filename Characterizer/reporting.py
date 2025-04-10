@@ -62,11 +62,8 @@ def save_metrics(results, method, output_dir):
 
 def _write_basic_metrics(file, results):
     """Write basic metrics to an open file."""
-    file.write(f"Number of keypoints detected in SAR image: {results['num_keypoints_sar']}\n")
-    file.write(f"Number of keypoints detected in optical image: {results['num_keypoints_opt']}\n")
-    file.write(f"Number of matches between images: {results['num_matches']}\n")
-    file.write(f"Number of inlier matches after RANSAC: {results['num_inliers']}\n")
-    
+    file.write("Basic Metrics:\n")
+    file.write("==============\n")
     # Handle matrix RMSE - either numpy array or scalar
     if 'matrix_rmse' in results and results['matrix_rmse'] is not None:
         matrix_rmse = results['matrix_rmse']
@@ -77,7 +74,8 @@ def _write_basic_metrics(file, results):
     else:
         file.write("RMSE between calculated and ground truth matrices: N/A\n")
     
-    file.write(f"Total execution time: {results['execution_time']:.4f} sec\n\n")
+    file.write(f"Total execution time: {results['execution_time']:.4f} sec\n")
+    file.write(f"Power consumption: {results['power'] / 1000000:.4f} W\n\n")
 
 
 def _write_transformation_matrix(file, results):
@@ -130,7 +128,7 @@ def compare_methods(results_by_method, output_dir):
 
 def _write_comparison_header(file):
     """Write the comparison table header to a file."""
-    header = "Method\tSAR Keypoints\tOPT Keypoints\tMatches\tInliers\tMatrix RMSE\tTime (sec)"
+    header = "Matrix RMSE\tTime (sec)\tPower (W)"
     file.write(header + "\n")
     file.write("-" * 105 + "\n")
 
@@ -139,11 +137,8 @@ def _write_method_row(file, method, results):
     """Write a row of method results to the comparison table."""
     # Format matrix RMSE based on type
     matrix_rmse_str = _format_matrix_rmse(results)
-    points_rmse_str = f"{results['points_rmse']:.2f}" if 'points_rmse' in results and results['points_rmse'] is not None else "N/A"
 
-    row = f"{method}\t{results['num_keypoints_sar']}\t{results['num_keypoints_opt']}\t{results['num_matches']}\t"
-    row += f"{results['num_inliers']}\t{matrix_rmse_str}\t{points_rmse_str}\t{results['execution_time']:.4f}"
-    file.write(row + "\n")
+    row = f"{method}\t{matrix_rmse_str}\t{results['execution_time']:.4f}\t{(results['power']/1000000):.4f}"
 
 
 def _format_matrix_rmse(results):
@@ -162,7 +157,7 @@ def _print_comparison_table(results_by_method):
     logger.info("\n==== Comparison of Methods ====")
     
     # Print header
-    header = "Method\tSAR Keypoints\tOPT Keypoints\tMatches\tInliers\tMatrix RMSE\tTime (sec)"
+    header = "Method\tMatrix RMSE\tTime (sec)\tPower (W)"
     logger.info(header)
     logger.info("-" * len(header))
     
@@ -170,8 +165,7 @@ def _print_comparison_table(results_by_method):
     for method, results in results_by_method.items():
         matrix_rmse_str = _format_matrix_rmse(results)
         
-        row = f"{method}\t{results['num_keypoints_sar']}\t{results['num_keypoints_opt']}\t{results['num_matches']}\t"
-        row += f"{results['num_inliers']}\t{matrix_rmse_str}\t{results['execution_time']:.4f}"
+        row = f"{method}\t{matrix_rmse_str}\t{results['execution_time']:.4f}\t{(results['power']/1000000):.4f}"
         logger.info(row)
 
 
@@ -264,10 +258,7 @@ def _calculate_average_metrics(results_by_set, methods):
 def _initialize_avg_metrics():
     """Initialize a dictionary for accumulating metrics."""
     return {
-        'num_keypoints_sar': 0,
-        'num_keypoints_opt': 0,
-        'num_matches': 0,
-        'num_inliers': 0,
+        'power': 0,
         'matrix_rmse': 0,
         'execution_time': 0
     }
@@ -278,12 +269,8 @@ def _accumulate_metrics(avg_metrics, counts, matrix_rmse_counts, method, results
     counts[method] += 1
     
     # Accumulate standard metrics
-    avg_metrics[method]['num_keypoints_sar'] += results['num_keypoints_sar']
-    avg_metrics[method]['num_keypoints_opt'] += results['num_keypoints_opt']
-    avg_metrics[method]['num_matches'] += results['num_matches']
-    avg_metrics[method]['num_inliers'] += results['num_inliers']
     avg_metrics[method]['execution_time'] += results['execution_time']
-    
+    avg_metrics[method]['power'] += results['power']
     # Accumulate matrix RMSE if available
     if 'matrix_rmse' in results and results['matrix_rmse'] is not None:
         # Handle numpy array case
@@ -298,11 +285,8 @@ def _accumulate_metrics(avg_metrics, counts, matrix_rmse_counts, method, results
 def _finalize_averages(avg_metrics, counts, matrix_rmse_counts, method):
     """Calculate final averages for a method."""
     if counts[method] > 0:
-        avg_metrics[method]['num_keypoints_sar'] /= counts[method]
-        avg_metrics[method]['num_keypoints_opt'] /= counts[method]
-        avg_metrics[method]['num_matches'] /= counts[method]
-        avg_metrics[method]['num_inliers'] /= counts[method]
         avg_metrics[method]['execution_time'] /= counts[method]
+        avg_metrics[method]['power'] /= counts[method]
     
     if matrix_rmse_counts[method] > 0:
         avg_metrics[method]['matrix_rmse'] /= matrix_rmse_counts[method]
@@ -318,6 +302,5 @@ def _write_avg_method_row(file, method, metrics):
     else:
         matrix_rmse_str = "N/A"
     
-    row = f"{method}\t{metrics['num_keypoints_sar']:.2f}\t{metrics['num_keypoints_opt']:.2f}\t{metrics['num_matches']:.2f}\t"
-    row += f"{metrics['num_inliers']:.2f}\t{matrix_rmse_str}\t{metrics['execution_time']:.4f}"
+    row = f"{method}\t{matrix_rmse_str}\t{metrics['execution_time']:.4f}\t{(metrics['power']/1000000):.4f}"
     file.write(row + "\n")

@@ -16,6 +16,8 @@ import logging
 from .metrics import compute_rmse_matrices, compute_rmse_points
 from .detectors import process_rift, process_lghd, process_sarsift, process_minima
 from .utils import make_match_image
+import xlnx_platformstats.python-bindings.xlnx_platformstats as xlnx 
+import threading
 
 # Configure logging
 logging.basicConfig(
@@ -23,6 +25,17 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+def power_logging(stop_event, power):
+    power = xlnx.get_power()
+    count = 0
+    while not stop_event.is_set():
+        power += xlnx.get_power()
+        logger.info(f"Power: {(power/count)/1000000:.2f} W")
+        count += 1
+        time.sleep(0.1)
+    power = power/count
+    logger.info(f"Average Power: {(power)/1000000:.2f} W")
 
 
 def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher, 
@@ -85,24 +98,25 @@ def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher,
 def _process_with_rift(sar_img, opt_img, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using RIFT algorithm."""
     logger.info("Processing with RIFT algorithm")
+    power = 0.0
+    # Start power monitoring thread
+    stop_event = threading.Event()
+    thread = threading.Thread(target=power_logging, args=(stop_event,power,))
+    thread.start()
     results = process_rift(sar_img, opt_img)
     
-    # Calculate additional metrics
-    num_keypoints_sar = len(results['keypoints_sar'])
-    num_keypoints_opt = len(results['keypoints_opt'])
-    num_matches = results['NM']
-    num_inliers = results['NCM']
-    
+
     # Calculate matrix RMSE if ground truth is available
     matrix_rmse = None
     if transform_gt is not None and results['transformation_matrix'] is not None:
         matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
     
+
+    stop_event.set()
+    thread.join()
+    results['power'] = power
     return {
-        'num_keypoints_sar': num_keypoints_sar,
-        'num_keypoints_opt': num_keypoints_opt,
-        'num_matches': num_matches,
-        'num_inliers': num_inliers,
+        'power': results['power'],
         'matrix_rmse': matrix_rmse,
         'execution_time': results['reg_time'],
         'transformation_matrix': results['transformation_matrix'],
@@ -119,10 +133,7 @@ def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
         matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
         print(matrix_rmse)
     return {
-        'num_keypoints_sar': len(results['keypoints_sar']),
-        'num_keypoints_opt': len(results['keypoints_opt']),
-        'num_matches': results['NM'],
-        'num_inliers': results['NCM'],
+        'power': results['power'],
         'matrix_rmse': matrix_rmse,
         'execution_time': results['reg_time'],
         'transformation_matrix': results['transformation_matrix'],
@@ -136,6 +147,12 @@ def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
 def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using LGHD algorithm."""
     logger.info("Processing with LGHD algorithm")
+    power = 0.0
+    # Start power monitoring thread
+    stop_event = threading.Event()
+    thread = threading.Thread(target=power_logging, args=(stop_event,power,))
+    thread.start()
+    # Process images with LGHD
     results = process_lghd(sar_img_path, opt_img_path)
     
     # Calculate matrix RMSE if ground truth is available
@@ -153,11 +170,12 @@ def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time,land
             points_rmse = compute_rmse_points(transformed_landmarks, landmarks_fix)
             print(f"Point-based RMSE: {points_rmse:.2f} pixels")
 
+    # Stop power monitoring thread
+    stop_event.set()
+    thread.join()
+    
     return {
-        'num_keypoints_sar': len(results['keypoints_sar']),
-        'num_keypoints_opt': len(results['keypoints_opt']),
-        'num_matches': results['NM'],
-        'num_inliers': results['NCM'],
+        'power': results['power'],
         'matrix_rmse': matrix_rmse,
         'execution_time': results['reg_time'],
         'transformation_matrix': results['transformation_matrix'],
@@ -171,6 +189,13 @@ def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time,land
 def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using SAR-SIFT algorithm."""
     logger.info("Processing with SAR-SIFT algorithm")
+    
+    # Start power monitoring thread
+    stop_event = threading.Event()
+    power = 0.0
+    thread = threading.Thread(target=power_logging, args=(stop_event,power,))
+    thread.start()
+
     results = process_sarsift(sar_img, opt_img)
     
     # Calculate matrix RMSE if ground truth is available
@@ -178,11 +203,13 @@ def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time,landmarks_m
     if transform_gt is not None and results['transformation_matrix'] is not None:
         matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
     
+    # Stop power monitoring thread
+    stop_event.set()
+    thread.join()
+    results['power'] = power
+
     return {
-        'num_keypoints_sar': len(results['keypoints_sar']),
-        'num_keypoints_opt': len(results['keypoints_opt']),
-        'num_matches': results['NM'],
-        'num_inliers': results['NCM'],
+        'power': results['power'],
         'matrix_rmse': matrix_rmse,
         'execution_time': results['reg_time'],
         'transformation_matrix': results['transformation_matrix'],
@@ -195,8 +222,13 @@ def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time,landmarks_m
 def _process_with_opencv(sar_img, opt_img, detector, matcher, transform_gt, ratio_thresh, start_time,landmarks_mov, landmarks_fix,):
     """Process images using standard OpenCV detectors and matchers."""
     logger.info("Processing with OpenCV-based algorithm")
-    
+    power = 0.0
     try:
+        # Start power monitoring thread
+        stop_event = threading.Event()
+        thread = threading.Thread(target=power_logging, args=(stop_event,power,))
+        thread.start()
+
         # Extract keypoints and descriptors
         kp_sar, desc_sar = detector.detectAndCompute(sar_img, None)
         kp_opt, desc_opt = detector.detectAndCompute(opt_img, None)
@@ -227,12 +259,11 @@ def _process_with_opencv(sar_img, opt_img, detector, matcher, transform_gt, rati
                 matrix_rmse = compute_rmse_matrices(transformation_matrix, transform_gt)
         
         execution_time = time.time() - start_time
-        
+            # Al termine, segnaliamo al thread di fermarsi e attendiamo la sua terminazione
+        stop_event.set()
+        thread.join()
         return {
-            'num_keypoints_sar': num_keypoints_sar,
-            'num_keypoints_opt': num_keypoints_opt,
-            'num_matches': num_matches,
-            'num_inliers': num_inliers,
+            'power': power,
             'matrix_rmse': matrix_rmse,
             'execution_time': execution_time,
             'transformation_matrix': transformation_matrix,

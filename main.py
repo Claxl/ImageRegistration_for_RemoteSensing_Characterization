@@ -23,6 +23,7 @@ The script processes images and ground truth from a folder with a consistent nam
 import os
 import argparse
 import logging
+
 from pathlib import Path
 from datetime import datetime
 from Characterizer.detectors import RIFT_AVAILABLE, LGHD_AVAILABLE, SARSIFT_AVAILABLE, MINIMA_AVAILABLE

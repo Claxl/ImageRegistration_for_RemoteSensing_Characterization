@@ -12,7 +12,6 @@ Also the **RIFT**, **OS-SIFT**, **SAR-SIFT**, **PSO-SIFT**, **LGHD** and **HOPC*
 -  OS-SIFT : Need Refiniment (optical image no keypoint)
 -  SAR-Sift : Implemented
 -   MINIMA : Implemented
--   CNN : In progress
 -   Faber : In progress
 
 ## Metrics
@@ -23,6 +22,7 @@ The extracted metrics are
 - RMSE
 - Median execution time
 - Mean execution time
+- Power Consumption on KRIA FPGA
 
 ## Credits
 ### Methods

@@ -27,7 +27,7 @@ bindings_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'x
 sys.path.insert(0, bindings_path)
 
 # Ora puoi importare il modulo
-import xlnx_platformstats
+import xlnx_platformstats as xlnx
 import threading
 
 # Configure logging

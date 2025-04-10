@@ -38,16 +38,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def power_logging(power_data,stop_event):
-    power_data["power"] = xlnx.get_power()[1]
-    logger.info(f"Power: {power_data["power"]/1000000:.2f} W")
+    power_data['power'] = xlnx.get_power()[1]
+    logger.info(f"Power: {power_data['power']/1000000:.2f} W")
     count = 1
     while not stop_event.is_set():
-        power_data["power"] += xlnx.get_power()[1]
-        logger.info(f"Power: {(power_data["power"]/count)/1000000:.2f} W")
+        power_data['power'] += xlnx.get_power()[1]
+        logger.info(f"Power: {(power_data['power']/count)/1000000:.2f} W")
         count += 1
         time.sleep(0.1)
-    power_data["power"] = power_data["power"]/count
-    logger.info(f"Average Power: {(power_data["power"])/1000000:.2f} W")
+    power_data['power'] = power_data['power']/count
+    logger.info(f"Average Power: {(power_data['power'])/1000000:.2f} W")
 
 
 def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher, 
@@ -110,7 +110,7 @@ def process_image_pair_with_gt(sar_img_path, opt_img_path, detector, matcher,
 def _process_with_rift(sar_img, opt_img, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using RIFT algorithm."""
     logger.info("Processing with RIFT algorithm")
-    power_data = {"power": 0.0}
+    power_data = {'power': 0.0}
     # Start power monitoring thread
     stop_event = threading.Event()
     thread = threading.Thread(target=power_logging, args=(power_data,stop_event,))
@@ -126,7 +126,7 @@ def _process_with_rift(sar_img, opt_img, transform_gt, start_time,landmarks_mov,
 
     stop_event.set()
     thread.join()
-    results['power'] = power_data["power"]
+    results['power'] = power_data['power']
     return {
         'power': results['power'],
         'matrix_rmse': matrix_rmse,
@@ -141,7 +141,7 @@ def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
     """Process images using MINIMA algorithm."""
     logger.info("Processing with MINIMA algorithm")
 
-    power_data = {"power": 0.0}
+    power_data = {'power': 0.0}
     # Start power monitoring thread
     stop_event = threading.Event()
     thread = threading.Thread(target=power_logging, args=(power_data,stop_event,))
@@ -153,7 +153,7 @@ def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
     
     stop_event.set()
     thread.join()
-    results['power'] = power_data["power"]
+    results['power'] = power_data['power']
     return {
         'power': results['power'],
         'matrix_rmse': matrix_rmse,
@@ -169,7 +169,7 @@ def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
 def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time,landmarks_mov, landmarks_fix,):
     """Process images using LGHD algorithm."""
     logger.info("Processing with LGHD algorithm")
-    power_data = {"power":0.0}    # Start power monitoring thread
+    power_data = {'power':0.0}    # Start power monitoring thread
     stop_event = threading.Event()
     thread = threading.Thread(target=power_logging, args=(power_data,stop_event,))
     thread.start()
@@ -194,7 +194,7 @@ def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time,land
     # Stop power monitoring thread
     stop_event.set()
     thread.join()
-    results['power'] = power_data["power"]
+    results['power'] = power_data['power']
     return {
         'power': results['power'],
         'matrix_rmse': matrix_rmse,
@@ -213,7 +213,7 @@ def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time,landmarks_m
     
     # Start power monitoring thread
     stop_event = threading.Event()
-    power_data = {"power": 0.0}
+    power_data = {'power': 0.0}
     thread = threading.Thread(target=power_logging, args=(power_data,stop_event,))
     thread.start()
 
@@ -227,7 +227,7 @@ def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time,landmarks_m
     # Stop power monitoring thread
     stop_event.set()
     thread.join()
-    results['power'] = power_data["power"]  
+    results['power'] = power_data['power']  
 
     return {
         'power': results['power'],
@@ -243,7 +243,7 @@ def _process_with_sarsift(sar_img, opt_img, transform_gt, start_time,landmarks_m
 def _process_with_opencv(sar_img, opt_img, detector, matcher, transform_gt, ratio_thresh, start_time,landmarks_mov, landmarks_fix,):
     """Process images using standard OpenCV detectors and matchers."""
     logger.info("Processing with OpenCV-based algorithm")
-    power_data = {"power": 0.0}
+    power_data = {'power': 0.0}
     try:
         # Start power monitoring thread
         stop_event = threading.Event()
@@ -285,7 +285,7 @@ def _process_with_opencv(sar_img, opt_img, detector, matcher, transform_gt, rati
         thread.join()
         
         return {
-            'power': power_data["power"],
+            'power': power_data['power'],
             'matrix_rmse': matrix_rmse,
             'execution_time': execution_time,
             'transformation_matrix': transformation_matrix,

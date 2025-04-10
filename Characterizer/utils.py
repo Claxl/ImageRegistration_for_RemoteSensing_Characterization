@@ -6,8 +6,9 @@ Utility functions for the image registration framework.
 
 This module provides utility functions for:
 - File handling and searching
+- Image pair matching
 - Ground truth data loading
-- Result visualization (other funzioni ausiliarie sono definite in moduli specifici)
+- Result visualization
 """
 
 import os
@@ -24,6 +25,73 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def get_image_files(folder, extensions=None):
+    """
+    Get a sorted list of image file paths from a folder.
+    
+    Args:
+        folder (str): Path to the folder containing images
+        extensions (list, optional): List of file extensions to search for.
+            Defaults to ['.jpg', '.png', '.jpeg', '.tif', '.tiff']
+            
+    Returns:
+        list: Sorted list of image file paths
+    """
+    if extensions is None:
+        extensions = ['.jpg', '.png', '.jpeg', '.tif', '.tiff']
+    
+    folder_path = Path(folder)
+    if not folder_path.exists():
+        logger.warning(f"Folder not found: {folder}")
+        return []
+    
+    # Find all files with specified extensions
+    image_files = []
+    for ext in extensions:
+        # Remove leading dot if present
+        if ext.startswith('.'):
+            pattern = f"*{ext}"
+        else:
+            pattern = f"*.{ext}"
+            
+        image_files.extend(folder_path.glob(pattern))
+    
+    # Sort files by name
+    return sorted(image_files)
+
+
+def extract_number(filename):
+    """
+    Extract the identifier part from filenames to match files across directories.
+    
+    This function tries different patterns to extract identifiers:
+    1. Pattern like 'ROIs1970_fall_s1_8_p99.png' -> extracts '8_p99'
+    2. Pattern with number before '_p' -> extracts that number
+    3. Any number in the filename
+    
+    Args:
+        filename (str): The filename to extract the identifier from
+        
+    Returns:
+        str or None: The extracted identifier, or None if no match is found
+    """
+    if not isinstance(filename, str):
+        filename = str(filename)
+    
+    # Try different pattern matching strategies
+    for pattern, group_idx in [
+        (r'_(\d+_p\d+)', 1),  # 'ROIs1970_fall_s1_8_p99.png' -> '8_p99'
+        (r'_(\d+)_p', 1),     # Extract number before '_p'
+        (r'(\d+)', 0)         # Any number in the filename
+    ]:
+        match = re.search(pattern, filename)
+        if match:
+            return match.group(group_idx)
+    
+    logger.debug(f"No identifier found in filename: {filename}")
+    return None
 
 
 def find_matching_files_in_folder(folder_path, tag=None):
@@ -61,7 +129,7 @@ def find_matching_files_in_folder(folder_path, tag=None):
     # Process each potential tag
     for current_tag in tags_to_use:
         # Find .mat files with the current tag using regex pattern
-        mat_pattern = re.compile(f"^{current_tag}(\\d+)\\.mat$")
+        mat_pattern = re.compile(f"^{current_tag}(\\d+)\.mat$")
         mat_files = [f for f in all_filenames if mat_pattern.match(f)]
         
         for mat_file in mat_files:
@@ -81,6 +149,8 @@ def find_matching_files_in_folder(folder_path, tag=None):
             opt_files = _find_matching_image_files(all_filenames, opt_pattern)
             
             if sar_files and opt_files:
+                _log_matching_set(current_tag, number, mat_file, sar_files[0], opt_files[0])
+                
                 matching_sets.append({
                     'tag': current_tag,
                     'number': number,
@@ -118,31 +188,7 @@ def _log_no_matches(folder_path, tag):
     logger.warning(msg)
 
 
-# La funzione load_ground_truth (e altre eventualmente utili) devono rimanere se
-# sono usate dagli altri moduli. Qui si mostra ad esempio load_ground_truth se presente.
-
-def load_ground_truth(gt_filepath):
-    """
-    Carica i dati di ground truth da un file .mat o altro formato previsto.
-    
-    Args:
-        gt_filepath (str): percorso del file ground truth
-        
-    Returns:
-        tuple: valori opportuni (ad esempio, landmark fissi, landmark mobili, matrice di trasformazione, etc.)
-    """
-    # Implementazione di esempio (da adattare in base al formato reale del file)
-    # …
-    # Per semplicità, restituiamo valori fittizi
-    landmarks_fix = np.array([[100, 150], [200, 250]])
-    landmarks_mov = np.array([[102, 148], [198, 252]])
-    transform_gt = np.eye(3)
-    return None, None, landmarks_fix, landmarks_mov, transform_gt
-
-
-
 def make_match_image(im1, im2, pts1, pts2, color=(0, 255, 255), radius=5, thickness=2):
-
     """
     Create a visualization image showing matches between two images.
     
@@ -201,3 +247,127 @@ def make_match_image(im1, im2, pts1, pts2, color=(0, 255, 255), radius=5, thickn
             continue
 
     return match_vis
+
+
+def _ensure_bgr(img):
+    """Ensure image is in BGR format."""
+    if img is None:
+        return None
+        
+    if len(img.shape) == 2:
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif img.shape[2] == 3:
+        return img.copy()
+    elif img.shape[2] == 4:  # RGBA
+        return cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+    else:
+        logger.warning(f"Unexpected image format with shape {img.shape}")
+        return img
+
+
+def load_ground_truth(mat_file_path):
+    """
+    Load ground truth data from a .mat file.
+    
+    Args:
+        mat_file_path (str): Path to the .mat file containing ground truth data
+        
+    Returns:
+        tuple: (I_fix, I_move, landmarks_fix, landmarks_mov, T)
+            - I_fix: Fixed (optical) image from ground truth
+            - I_move: Moving (SAR) image from ground truth
+            - landmarks_fix: Landmark points for optical image
+            - landmarks_mov: Landmark points for SAR image
+            - T: Ground truth transformation matrix (if available)
+            
+    Raises:
+        IOError: If there's an error loading the ground truth data
+    """
+    try:
+        import scipy.io
+        
+        logger.info(f"Loading ground truth from {mat_file_path}")
+        mat_data = scipy.io.loadmat(mat_file_path)
+        
+        # Extract images
+        I_fix = _extract_and_normalize_image(mat_data, 'I_fix')
+        I_move = _extract_and_normalize_image(mat_data, 'I_move')
+        
+        # Extract landmark points
+        landmarks = mat_data['Landmarks']
+        landmarks_fix = landmarks[0][0][0]
+        landmarks_mov = landmarks[0][0][1]
+        
+        logger.info(f"Loaded {len(landmarks_fix)} landmark pairs")
+        
+        # Extract transformation matrix if available
+        T = _extract_transformation_matrix(mat_data)
+        
+        return I_fix, I_move, landmarks_fix, landmarks_mov, T
+        
+    except Exception as e:
+        logger.error(f"Error loading ground truth data: {e}")
+        raise IOError(f"Error loading ground truth data: {e}")
+
+
+def _extract_and_normalize_image(mat_data, image_key):
+    """Extract and normalize an image from the MAT data."""
+    img = mat_data[image_key]
+    
+    # Ensure image is grayscale
+    if len(img.shape) > 2:
+        img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2GRAY)
+    else:
+        img = img.astype(np.uint8)
+        
+    return img
+
+
+def _extract_transformation_matrix(mat_data):
+    """Extract transformation matrix from MAT data if available."""
+    if 'T' in mat_data:
+        T = mat_data['T']
+        logger.info(f"Ground truth transformation matrix extracted: shape {T.shape}")
+        return T
+    else:
+        logger.warning("Ground truth transformation matrix 'T' not found in the .mat file")
+        return None
+
+
+def save_results(sar_path, opt_path, registered_img, matches_img, method, output_dir="output"):
+    """
+    Save the registered image and matches visualization to the output directory.
+    
+    Args:
+        sar_path (str): Path to the SAR image
+        opt_path (str): Path to the optical image
+        registered_img (np.ndarray): Registered (warped) SAR image
+        matches_img (np.ndarray): Visualization of feature matches
+        method (str): Method name used for registration (e.g., 'SIFT', 'RIFT')
+        output_dir (str): Output directory for saving results
+    """
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Extract base filenames
+    base_sar = Path(sar_path).stem
+    base_opt = Path(opt_path).stem
+    
+    # Create output filenames
+    reg_filename = output_path / f"{method}_registered_{base_sar}_to_{base_opt}.png"
+    matches_filename = output_path / f"{method}_matches_{base_sar}_to_{base_opt}.png"
+    
+    # Save images if available
+    if registered_img is not None:
+        try:
+            cv2.imwrite(str(reg_filename), registered_img)
+            logger.info(f"Saved registered image to {reg_filename}")
+        except Exception as e:
+            logger.error(f"Error saving registered image: {e}")
+    
+    if matches_img is not None:
+        try:
+            cv2.imwrite(str(matches_filename), matches_img)
+            logger.info(f"Saved matches image to {matches_filename}")
+        except Exception as e:
+            logger.error(f"Error saving matches image: {e}")

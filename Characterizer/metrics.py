@@ -46,6 +46,8 @@ def compute_rmse_matrices(H_pred, H_gt):
         
         # Compute RMSE directly between matrix elements
         rmse = np.sqrt(np.mean((H_pred - H_gt) ** 2))
+        if np.isnan(rmse):
+            return 1e6
         return rmse
         
     except Exception as e:

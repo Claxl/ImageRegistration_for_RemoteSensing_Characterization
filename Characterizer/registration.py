@@ -119,7 +119,7 @@ def _process_with_rift(sar_img, opt_img, transform_gt, start_time,landmarks_mov,
     
 
     # Calculate matrix RMSE if ground truth is available
-    matrix_rmse = None
+    matrix_rmse = 1e6
     if transform_gt is not None and results['transformation_matrix'] is not None:
         matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
     
@@ -140,7 +140,7 @@ def _process_with_rift(sar_img, opt_img, transform_gt, start_time,landmarks_mov,
 def process_with_MINIMA(sar_img_path, opt_img_path, matcher,transform_gt):
     """Process images using MINIMA algorithm."""
     logger.info("Processing with MINIMA algorithm")
-
+    matrix_rmse = 1e6
     power_data = {'power': 0.0}
     # Start power monitoring thread
     stop_event = threading.Event()
@@ -177,7 +177,8 @@ def _process_with_lghd(sar_img_path, opt_img_path, transform_gt, start_time,land
     results = process_lghd(sar_img_path, opt_img_path)
     
     # Calculate matrix RMSE if ground truth is available
-    matrix_rmse = None
+    matrix_rmse = 1e6
+    points_rmse = 1e6
     if transform_gt is not None and results['transformation_matrix'] is not None:
         matrix_rmse = compute_rmse_matrices(results['transformation_matrix'], transform_gt)
     if landmarks_mov is not None and landmarks_fix is not None:
@@ -267,7 +268,7 @@ def _process_with_opencv(sar_img, opt_img, detector, matcher, transform_gt, rati
         # Initialize output variables
         transformation_matrix = None
         num_inliers = 0
-        matrix_rmse = None
+        matrix_rmse = 1e6
         
         # Compute homography if enough good matches
         if num_matches >= 4:

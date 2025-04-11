@@ -259,9 +259,9 @@ def _calculate_average_metrics(results_by_set, methods):
 def _initialize_avg_metrics():
     """Initialize a dictionary for accumulating metrics."""
     return {
-        'power': 1e10, # Start with a large value for power
-        'matrix_rmse': 1e10,  # Start with a large value for RMSE
-        'execution_time': 1e10  # Start with a large value for execution time
+        'power': 0,
+        'matrix_rmse': 0,
+        'execution_time': 0
     }
 
 

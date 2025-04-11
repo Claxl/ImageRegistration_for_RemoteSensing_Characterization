@@ -35,7 +35,7 @@ def compute_rmse_matrices(H_pred, H_gt):
     """
     if H_pred is None or H_gt is None:
         logger.warning("Cannot compute RMSE: one or both matrices are None")
-        return 1e6
+        return 1e4
     if isinstance(H_pred, list):
         H_pred = np.array(H_pred)
     try:
@@ -47,12 +47,12 @@ def compute_rmse_matrices(H_pred, H_gt):
         # Compute RMSE directly between matrix elements
         rmse = np.sqrt(np.mean((H_pred - H_gt) ** 2))
         if np.isnan(rmse):
-            return 1e6
+            return 1e4
         return rmse
         
     except Exception as e:
         logger.error(f"Error computing matrix RMSE: {e}")
-        return 1e6
+        return 1e4
 
 
 def compute_rmse_points(points1, points2):

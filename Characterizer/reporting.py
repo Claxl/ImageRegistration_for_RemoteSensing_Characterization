@@ -139,6 +139,7 @@ def _write_method_row(file, method, results):
     matrix_rmse_str = _format_matrix_rmse(results)
 
     row = f"{method}\t{matrix_rmse_str}\t{results['execution_time']:.4f}\t{(results['power']/1000000):.4f}"
+    file.write(row + "\n")
 
 
 def _format_matrix_rmse(results):
@@ -258,9 +259,9 @@ def _calculate_average_metrics(results_by_set, methods):
 def _initialize_avg_metrics():
     """Initialize a dictionary for accumulating metrics."""
     return {
-        'power': 0,
-        'matrix_rmse': 0,
-        'execution_time': 0
+        'power': 1e10, # Start with a large value for power
+        'matrix_rmse': 1e10,  # Start with a large value for RMSE
+        'execution_time': 1e10  # Start with a large value for execution time
     }
 
 
